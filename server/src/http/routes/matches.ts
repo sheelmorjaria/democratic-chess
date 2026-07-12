@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { requireAuth } from "../../auth/middleware.js";
 import { createTeamMatch, MatchServiceError } from "../../game/matchService.js";
+import { getRuntime } from "../../game/runtime.js";
 
 const createMatchSchema = z.object({
   whiteTeamId: z.string().uuid(),
@@ -18,6 +19,8 @@ export function createMatchesRouter(db: PrismaClient): Router {
     try {
       const input = createMatchSchema.parse(req.body);
       const match = await createTeamMatch(db, input);
+      // Open turn 1 (fire-and-forget; emits to an empty room until players join).
+      void getRuntime().startMatch(match.id);
       res.status(201).json(match);
     } catch (error) {
       if (error instanceof MatchServiceError) {

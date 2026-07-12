@@ -67,11 +67,11 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 
 - [x] T018 [P] [US1] Team service + REST (create team with creator-as-captain, get team) in `server/src/http/routes/teams.ts`
 - [x] T019 [US1] Match service: create match (direct challenge), assign colors + captain flags, status WAITING→ACTIVE, seed FEN + time banks in `server/src/game/matchService.ts`
-- [ ] T020 [US1] Turn/timer engine: open turn, arm Redis turn-timer key, resolve on expiry (auto-execute leading) or unanimous `execute_now` in `server/src/game/turnEngine.ts` + tests in `server/src/game/turnEngine.test.ts`
-- [ ] T021 [US1] `propose_move` handler: validate via chess.js, dedupe by `{from}:{to}:{promo}`, add to Redis ballot, emit `new_proposal` to color room in `server/src/realtime/handlers/proposeMove.ts` + tests in `server/src/realtime/handlers/proposeMove.test.ts`
-- [ ] T022 [US1] `vote_move` handler: one vote/member (changeable), update tallies, emit `vote_update` to color room in `server/src/realtime/handlers/voteMove.ts` + tests in `server/src/realtime/handlers/voteMove.test.ts`
-- [ ] T023 [US1] Move execution: apply leading move to chess.js, update `Match.fen`, emit `move_executed` to match room, advance turn / detect game-over in `server/src/game/executeMove.ts` + tests in `server/src/game/executeMove.test.ts`
-- [ ] T024 [US1] `match_end` + ELO rating update (compute per research R5, persist to `Rating`) in `server/src/game/matchEnd.ts` and `server/src/matchmaking/rating.ts` + tests in `server/src/matchmaking/rating.test.ts`
+- [x] T020 [US1] Turn/timer engine: open turn, arm Redis turn-timer key, resolve on expiry (auto-execute leading) or unanimous `execute_now` in `server/src/game/turnEngine.ts` + tests in `server/src/game/turnEngine.test.ts`
+- [x] T021 [US1] `propose_move` handler: validate via chess.js, dedupe by `{from}:{to}:{promo}`, add to Redis ballot, emit `new_proposal` to color room in `server/src/realtime/handlers/proposeMove.ts` + tests in `server/src/realtime/handlers/proposeMove.test.ts`
+- [x] T022 [US1] `vote_move` handler: one vote/member (changeable), update tallies, emit `vote_update` to color room in `server/src/realtime/handlers/voteMove.ts` + tests in `server/src/realtime/handlers/voteMove.test.ts`
+- [x] T023 [US1] Move execution: apply leading move to chess.js, update `Match.fen`, emit `move_executed` to match room, advance turn / detect game-over in `server/src/game/executeMove.ts` + tests in `server/src/game/executeMove.test.ts`
+- [x] T024 [US1] `match_end` + ELO rating update (compute per research R5, persist to `Rating`) in `server/src/game/matchEnd.ts` and `server/src/matchmaking/rating.ts` + tests in `server/src/matchmaking/rating.test.ts`
 - [ ] T025 [P] [US1] Client socket + REST API clients with auth token wiring in `client/src/lib/{socket.ts,api.ts}`
 - [ ] T026 [P] [US1] Match view + `react-chessboard` integration; click-to-move emits `propose_move` in `client/src/app/match/[id]/page.tsx` and `client/src/components/Board.tsx`
 - [ ] T027 [P] [US1] Voting sidebar (list proposals, vote buttons, live tallies, turn-timer display) in `client/src/components/VotingSidebar.tsx`

@@ -13,6 +13,9 @@ import { verifyAccessToken } from "../auth/jwt.js";
 export interface SocketData {
   userId: string;
   username: string;
+  /** Set when the socket joins a match, so disconnect can clear presence. */
+  matchId?: string;
+  color?: "white" | "black";
 }
 
 export type AppServer = Server<

@@ -4,13 +4,24 @@ import { createApp } from "./http/app.js";
 import { getPrisma } from "./db/prisma.js";
 import { getRedis } from "./db/redis.js";
 import { createRealtimeServer } from "./realtime/io.js";
+import { registerGameHandlers } from "./realtime/handlers.js";
+import { initRuntime } from "./game/runtime.js";
 
 const port = Number(process.env.PORT ?? 3001);
 
-const app = createApp({ db: getPrisma() });
-const httpServer = http.createServer(app);
+const db = getPrisma();
+const redis = getRedis();
 
-createRealtimeServer({ httpServer, redis: getRedis() });
+// Build the realtime server first (needs the http server), then the game
+// runtime (needs io), then Express (the match route reaches the runtime via
+// the singleton at request time, avoiding a construction cycle).
+const httpServer = http.createServer();
+const io = createRealtimeServer({ httpServer, redis });
+const turnEngine = initRuntime({ db, redis, io });
+registerGameHandlers(io, turnEngine);
+
+const app = createApp({ db });
+httpServer.on("request", app);
 
 httpServer.listen(port, () => {
   console.log(`[server] listening on http://localhost:${port}`);
