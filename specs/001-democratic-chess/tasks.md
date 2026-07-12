@@ -28,13 +28,13 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 
 **Purpose**: Monorepo skeleton, local services, tooling.
 
-- [ ] T001 Initialize npm-workspaces monorepo in root `package.json` (workspaces: `client`, `server`, `packages/types`) + base `tsconfig.base.json`
-- [ ] T002 [P] Create `docker-compose.yml` (postgres:16 on 5432, redis:7 on 6379) at repo root
-- [ ] T003 [P] Scaffold Next.js 14 client (app router, TS) in `client/`
-- [ ] T004 [P] Scaffold Express + TS server in `server/` (dev/build scripts)
-- [ ] T005 [P] Scaffold `packages/types` (TS library, barrel export, build via `tsc`)
-- [ ] T006 [P] Configure shared tooling: eslint, prettier, vitest at repo root + per-package configs
-- [ ] T007 [P] Create `client/.env.example` (`NEXT_PUBLIC_API_URL`) and `server/.env.example` (`DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`)
+- [x] T001 Initialize npm-workspaces monorepo in root `package.json` (workspaces: `client`, `server`, `packages/types`) + base `tsconfig.base.json`
+- [x] T002 [P] Create `docker-compose.yml` (postgres:16 on 5432, redis:7 on 6379) at repo root
+- [x] T003 [P] Scaffold Next.js 14 client (app router, TS) in `client/`
+- [x] T004 [P] Scaffold Express + TS server in `server/` (dev/build scripts)
+- [x] T005 [P] Scaffold `packages/types` (TS library, barrel export, build via `tsc`)
+- [x] T006 [P] Configure shared tooling: eslint, prettier, vitest at repo root + per-package configs
+- [x] T007 [P] Create `client/.env.example` (`NEXT_PUBLIC_API_URL`) and `server/.env.example` (`DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`)
 
 ---
 
