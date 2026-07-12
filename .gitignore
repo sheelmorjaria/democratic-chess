@@ -55,6 +55,11 @@ Thumbs.db
 *.swo
 *~
 
+# ---------- Claude Code (ignore per-user local secrets; keep skills/commands/agents committed) ----------
+.claude/settings.local.json
+.claude/.cache/
+.claude/todos/
+
 # ---------- Misc ----------
 .cache/
 *.pid
