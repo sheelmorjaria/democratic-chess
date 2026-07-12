@@ -79,7 +79,7 @@ let fx: Fixture;
 beforeEach(async () => {
   httpServer = http.createServer();
   io = createRealtimeServer({ httpServer, redis, clientOrigin: "*" });
-  engine = new TurnEngine({ db, redis, io });
+  engine = new TurnEngine({ db, redis, io, forfeitGraceMs: 100 });
   registerGameHandlers(io, engine);
   await new Promise<void>((resolve) => {
     httpServer.listen(0, () => {

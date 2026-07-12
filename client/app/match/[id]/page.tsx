@@ -142,6 +142,25 @@ export default function MatchPage() {
     );
   }
 
+  // Terminal state: the match is over — show the result + final position, no ballot.
+  if (over) {
+    return (
+      <main style={{ padding: "1.5rem", fontFamily: "system-ui, sans-serif" }}>
+        <h1>Match {matchId.slice(0, 8)}…</h1>
+        <p style={{ color: "green", fontWeight: 600, fontSize: "1.1rem" }}>{over}</p>
+        <p>
+          <button onClick={() => router.push("/lobby")} style={{ marginRight: 8 }}>
+            ← Back to lobby
+          </button>
+          <button onClick={() => router.push("/leaderboard")}>Leaderboard</button>
+        </p>
+        <div style={{ maxWidth: 480, marginTop: "1rem" }}>
+          <Board fen={fen} myTurn={false} orientation={color} onPropose={() => undefined} />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main style={{ padding: "1.5rem", fontFamily: "system-ui, sans-serif" }}>
       <h1>Match {matchId.slice(0, 8)}…</h1>

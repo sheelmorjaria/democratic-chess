@@ -76,7 +76,11 @@ export interface TurnEngineDeps {
   db: PrismaClient;
   redis: Redis;
   io: Server;
+  /** Reconnection grace before a side at zero presence forfeits (FR-009). */
+  forfeitGraceMs?: number;
 }
+
+const DEFAULT_FORFEIT_GRACE_MS = 20_000;
 
 /**
  * Drives a match's realtime loop: opens a turn, arms the Redis turn-timer key,
@@ -85,8 +89,12 @@ export interface TurnEngineDeps {
  */
 export class TurnEngine {
   private readonly timers = new Map<string, NodeJS.Timeout>();
+  private readonly forfeitTimers = new Map<string, NodeJS.Timeout>();
+  private readonly forfeitGraceMs: number;
 
-  constructor(private readonly deps: TurnEngineDeps) {}
+  constructor(private readonly deps: TurnEngineDeps) {
+    this.forfeitGraceMs = deps.forfeitGraceMs ?? DEFAULT_FORFEIT_GRACE_MS;
+  }
 
   async startMatch(matchId: string): Promise<void> {
     await this.openTurn(matchId);
@@ -122,10 +130,12 @@ export class TurnEngine {
     }
   }
 
-  /** Clears all armed turn timers (call on shutdown / test teardown). */
+  /** Clears all armed turn + forfeit timers (call on shutdown / test teardown). */
   dispose(): void {
     for (const handle of this.timers.values()) clearTimeout(handle);
     this.timers.clear();
+    for (const handle of this.forfeitTimers.values()) clearTimeout(handle);
+    this.forfeitTimers.clear();
   }
 
   /** Window-expiry / execute_now: run resolution, then advance or finalize. */
@@ -180,6 +190,8 @@ export class TurnEngine {
     socket.data.color = color;
     await joinMatchRooms(socket, matchId, color);
     await addPresence(this.deps.redis, matchId, color, socket.data.userId);
+    // A side rejoining cancels any pending forfeit from a momentary disconnect.
+    this.clearForfeitTimer(matchId, color);
     socket.emit("match_start", {
       matchId,
       mode: match.mode,
@@ -332,16 +344,45 @@ export class TurnEngine {
     if (!matchId || !color || !userId) return;
     await removePresence(this.deps.redis, matchId, color, userId);
     const remaining = await presenceCount(this.deps.redis, matchId, color);
+    // FR-009: a side at zero presence forfeits — but only after a reconnection
+    // grace, so a page refresh or transient blip doesn't end the match.
     if (remaining === 0) {
-      const match = await this.deps.db.match.findUnique({ where: { id: matchId } });
-      if (match && match.status === "ACTIVE") {
-        const opponent = color === "white" ? "BLACK" : "WHITE";
-        await endMatch({ db: this.deps.db, io: this.deps.io }, matchId, {
-          winner: opponent,
-          reason: "forfeit",
-        });
-      }
+      this.scheduleForfeitCheck(matchId, color);
     }
+  }
+
+  private scheduleForfeitCheck(matchId: string, color: "white" | "black"): void {
+    const key = `${matchId}:${color}`;
+    this.clearForfeitTimer(matchId, color);
+    const handle = setTimeout(() => {
+      this.forfeitTimers.delete(key);
+      this.enforceForfeitIfAbsent(matchId, color).catch((error) =>
+        logger.error({ err: error, msg: "forfeitCheck.error", matchId, color }),
+      );
+    }, this.forfeitGraceMs);
+    this.forfeitTimers.set(key, handle);
+  }
+
+  private clearForfeitTimer(matchId: string, color: string): void {
+    const key = `${matchId}:${color}`;
+    const handle = this.forfeitTimers.get(key);
+    if (handle) {
+      clearTimeout(handle);
+      this.forfeitTimers.delete(key);
+    }
+  }
+
+  /** Grace elapsed — forfeit only if the side is still at zero presence. */
+  private async enforceForfeitIfAbsent(matchId: string, color: "white" | "black"): Promise<void> {
+    const remaining = await presenceCount(this.deps.redis, matchId, color);
+    if (remaining > 0) return; // they reconnected during the grace window
+    const match = await this.deps.db.match.findUnique({ where: { id: matchId } });
+    if (!match || match.status !== "ACTIVE") return;
+    const opponent = color === "white" ? "BLACK" : "WHITE";
+    await endMatch({ db: this.deps.db, io: this.deps.io }, matchId, {
+      winner: opponent,
+      reason: "forfeit",
+    });
   }
 
   private async broadcastTallies(matchId: string, turnNumber: number, color: string): Promise<void> {

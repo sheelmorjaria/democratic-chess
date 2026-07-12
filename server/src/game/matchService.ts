@@ -45,6 +45,15 @@ export async function createTeamMatch(
     throw new MatchServiceError("team_not_found", "one or both teams not found");
   }
 
+  // A user can't sit on both sides of the same match (unique (matchId, userId)).
+  const whiteUserIds = new Set(white.members.map((m) => m.userId));
+  if (black.members.some((m) => whiteUserIds.has(m.userId))) {
+    throw new MatchServiceError(
+      "overlapping_rosters",
+      "a player is on both teams — challenge two teams with disjoint rosters",
+    );
+  }
+
   const timeBank = input.timeBankMs ?? 600_000;
   return db.match.create({
     data: {
