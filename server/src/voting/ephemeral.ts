@@ -15,6 +15,8 @@ export interface ProposalRecord {
   from: string;
   to: string;
   promotion?: string;
+  /** Server-set timestamp used for tie-break ordering (earliest proposed). */
+  proposedAt?: number;
 }
 
 export interface Tally {
@@ -43,7 +45,8 @@ export async function addProposal(
   moveKey: string,
   record: ProposalRecord,
 ): Promise<boolean> {
-  const wasSet = await r.hsetnx(proposalsKey(matchId, turn), moveKey, JSON.stringify(record));
+  const stored: ProposalRecord = { ...record, proposedAt: Date.now() };
+  const wasSet = await r.hsetnx(proposalsKey(matchId, turn), moveKey, JSON.stringify(stored));
   return wasSet === 1;
 }
 

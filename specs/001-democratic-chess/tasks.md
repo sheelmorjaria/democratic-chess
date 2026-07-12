@@ -65,8 +65,8 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 
 **Independent Test**: Two teams (formed via team management) start a direct-challenge match; a full game completes through propose/vote/auto-execute; the board syncs to both sides; no private events leak to opponents; both ratings update at `match_end`.
 
-- [ ] T018 [P] [US1] Team service + REST (create team with creator-as-captain, get team) in `server/src/http/routes/teams.ts`
-- [ ] T019 [US1] Match service: create match (direct challenge), assign colors + captain flags, status WAITING→ACTIVE, seed FEN + time banks in `server/src/game/matchService.ts`
+- [x] T018 [P] [US1] Team service + REST (create team with creator-as-captain, get team) in `server/src/http/routes/teams.ts`
+- [x] T019 [US1] Match service: create match (direct challenge), assign colors + captain flags, status WAITING→ACTIVE, seed FEN + time banks in `server/src/game/matchService.ts`
 - [ ] T020 [US1] Turn/timer engine: open turn, arm Redis turn-timer key, resolve on expiry (auto-execute leading) or unanimous `execute_now` in `server/src/game/turnEngine.ts` + tests in `server/src/game/turnEngine.test.ts`
 - [ ] T021 [US1] `propose_move` handler: validate via chess.js, dedupe by `{from}:{to}:{promo}`, add to Redis ballot, emit `new_proposal` to color room in `server/src/realtime/handlers/proposeMove.ts` + tests in `server/src/realtime/handlers/proposeMove.test.ts`
 - [ ] T022 [US1] `vote_move` handler: one vote/member (changeable), update tallies, emit `vote_update` to color room in `server/src/realtime/handlers/voteMove.ts` + tests in `server/src/realtime/handlers/voteMove.test.ts`
