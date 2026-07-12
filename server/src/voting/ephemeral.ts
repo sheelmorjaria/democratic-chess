@@ -97,6 +97,15 @@ export async function getTallies(
   return out;
 }
 
+export async function getVoterChoice(
+  r: Redis,
+  matchId: string,
+  turn: number,
+  userId: string,
+): Promise<string | null> {
+  return r.hget(voterChoiceKey(matchId, turn), userId);
+}
+
 export async function getLeading(
   r: Redis,
   matchId: string,

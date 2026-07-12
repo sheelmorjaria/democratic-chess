@@ -15,7 +15,8 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
     const body = (await res.json().catch(() => ({}))) as { message?: string };
     throw new Error(body.message ?? `request failed: ${res.status}`);
   }
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : undefined;
 }
 
 export interface AuthResponse {
@@ -50,4 +51,15 @@ export function createMatch(whiteTeamId: string, blackTeamId: string): Promise<{
     method: "POST",
     body: JSON.stringify({ whiteTeamId, blackTeamId }),
   }) as Promise<{ id: string }>;
+}
+
+export function addTeamMember(teamId: string, userId: string): Promise<void> {
+  return request(`/teams/${teamId}/members`, {
+    method: "POST",
+    body: JSON.stringify({ userId }),
+  }) as Promise<void>;
+}
+
+export function removeTeamMember(teamId: string, userId: string): Promise<void> {
+  return request(`/teams/${teamId}/members/${userId}`, { method: "DELETE" }) as Promise<void>;
 }

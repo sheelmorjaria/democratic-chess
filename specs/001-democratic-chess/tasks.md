@@ -103,8 +103,8 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 
 **Independent Test**: A 50/50 tie resolves to the captain's choice (no stall); a captain can invite/remove members.
 
-- [ ] T034 [US3] Captain double-weight tie-break in turn resolution (captain vote = 2; fallback earliest-proposed) in `server/src/game/turnEngine.ts` (resolveTie) + tests in `server/src/game/turnEngine.test.ts`
-- [ ] T035 [P] [US3] Captain roster-management REST (invite/remove members, set match params — FR-014) in `server/src/http/routes/teams.ts` + UI in `client/src/components/RosterManager.tsx`
+- [x] T034 [US3] Captain double-weight tie-break in turn resolution (captain vote = 2; fallback earliest-proposed) in `server/src/game/turnEngine.ts` (resolveTie) + tests in `server/src/game/turnEngine.test.ts`
+- [x] T035 [P] [US3] Captain roster-management REST (invite/remove members, set match params — FR-014) in `server/src/http/routes/teams.ts` + UI in `client/src/components/RosterManager.tsx`
 
 **Checkpoint**: Voting edge cases handled; captain authority complete.
 

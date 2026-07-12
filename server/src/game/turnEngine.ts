@@ -10,6 +10,7 @@ import {
   clearTurn,
   getProposals,
   getTallies,
+  getVoterChoice,
   removePresence,
   type ProposalRecord,
   type Tally,
@@ -57,6 +58,14 @@ export function resolveLeading(
 
 function proposedAt(proposals: Record<string, ProposalRecord>, key: string): number {
   return proposals[key]?.proposedAt ?? 0;
+}
+
+/** US3: the captain's voted move counts double (their raw vote is already in `tallies`). */
+export function weightTallies(tallies: Tally[], captainMoveKey: string): Tally[] {
+  return tallies.map((t) => ({
+    moveKey: t.moveKey,
+    count: t.count + (t.moveKey === captainMoveKey ? 1 : 0),
+  }));
 }
 
 export interface TurnEngineDeps {
@@ -116,11 +125,20 @@ export class TurnEngine {
   /** Window-expiry / execute_now: run resolution, then advance or finalize. */
   async resolveTurn(matchId: string): Promise<void> {
     this.clearTimer(matchId);
-    const match = await this.deps.db.match.findUnique({ where: { id: matchId } });
+    const match = await this.deps.db.match.findUnique({
+      where: { id: matchId },
+      include: { participants: true },
+    });
     if (!match || match.status !== "ACTIVE") return;
 
     const proposals = await getProposals(this.deps.redis, matchId, match.turnNumber);
-    const tallies = await getTallies(this.deps.redis, matchId, match.turnNumber);
+    const rawTallies = await getTallies(this.deps.redis, matchId, match.turnNumber);
+    const captainId =
+      match.participants.find((p) => p.teamColor === match.turn && p.isCaptain)?.userId ?? null;
+    const captainMove = captainId
+      ? await getVoterChoice(this.deps.redis, matchId, match.turnNumber, captainId)
+      : null;
+    const tallies = captainMove ? weightTallies(rawTallies, captainMove) : rawTallies;
     const resolution = resolveLeading(proposals, tallies);
 
     if (resolution.moveKey) {

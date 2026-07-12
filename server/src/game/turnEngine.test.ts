@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProposalRecord } from "../voting/ephemeral.js";
-import { resolveLeading } from "./turnEngine.js";
+import { resolveLeading, weightTallies } from "./turnEngine.js";
 
 function proposal(id: string, proposedAt: number): ProposalRecord {
   return { id, proposerUserId: "u", san: "e4", from: "e2", to: "e4", proposedAt };
@@ -33,5 +33,16 @@ describe("resolveLeading (US1)", () => {
     const proposals = { "d2:d4:-": proposal("p2", 9), "e2:e4:-": proposal("p1", 3) };
     const tallies = [{ moveKey: "d2:d4:-", count: 0 }];
     expect(resolveLeading(proposals, tallies).moveKey).toBe("e2:e4:-");
+  });
+
+  it("breaks a tie using the captain's double-weight vote", () => {
+    const proposals = { "a:a:-": proposal("pa", 1), "b:b:-": proposal("pb", 2) };
+    const tallies = [
+      { moveKey: "a:a:-", count: 2 },
+      { moveKey: "b:b:-", count: 2 },
+    ];
+    const weighted = weightTallies(tallies, "b:b:-");
+    expect(weighted.find((t) => t.moveKey === "b:b:-")?.count).toBe(3);
+    expect(resolveLeading(proposals, weighted).moveKey).toBe("b:b:-");
   });
 });
