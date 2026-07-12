@@ -72,11 +72,11 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 - [x] T022 [US1] `vote_move` handler: one vote/member (changeable), update tallies, emit `vote_update` to color room in `server/src/realtime/handlers/voteMove.ts` + tests in `server/src/realtime/handlers/voteMove.test.ts`
 - [x] T023 [US1] Move execution: apply leading move to chess.js, update `Match.fen`, emit `move_executed` to match room, advance turn / detect game-over in `server/src/game/executeMove.ts` + tests in `server/src/game/executeMove.test.ts`
 - [x] T024 [US1] `match_end` + ELO rating update (compute per research R5, persist to `Rating`) in `server/src/game/matchEnd.ts` and `server/src/matchmaking/rating.ts` + tests in `server/src/matchmaking/rating.test.ts`
-- [ ] T025 [P] [US1] Client socket + REST API clients with auth token wiring in `client/src/lib/{socket.ts,api.ts}`
-- [ ] T026 [P] [US1] Match view + `react-chessboard` integration; click-to-move emits `propose_move` in `client/src/app/match/[id]/page.tsx` and `client/src/components/Board.tsx`
-- [ ] T027 [P] [US1] Voting sidebar (list proposals, vote buttons, live tallies, turn-timer display) in `client/src/components/VotingSidebar.tsx`
-- [ ] T028 [P] [US1] Team text-chat component (same-color room only) in `client/src/components/TeamChat.tsx`
-- [ ] T029 [P] [US1] Lobby: create/join team, form sides, direct-challenge to start a match in `client/src/app/lobby/page.tsx`
+- [x] T025 [P] [US1] Client socket + REST API clients with auth token wiring in `client/src/lib/{socket.ts,api.ts}`
+- [x] T026 [P] [US1] Match view + `react-chessboard` integration; click-to-move emits `propose_move` in `client/src/app/match/[id]/page.tsx` and `client/src/components/Board.tsx`
+- [x] T027 [P] [US1] Voting sidebar (list proposals, vote buttons, live tallies, turn-timer display) in `client/src/components/VotingSidebar.tsx`
+- [x] T028 [P] [US1] Team text-chat component (same-color room only) in `client/src/components/TeamChat.tsx`
+- [x] T029 [P] [US1] Lobby: create/join team, form sides, direct-challenge to start a match in `client/src/app/lobby/page.tsx`
 - [ ] T030 [US1] Playwright e2e for quickstart scenario A (two browsers: propose/vote/auto-execute; board syncs; cross-room isolation) in `client/e2e/core-loop.spec.ts`
 
 **Checkpoint**: US1 fully functional and independently testable — the MVP centerpiece.

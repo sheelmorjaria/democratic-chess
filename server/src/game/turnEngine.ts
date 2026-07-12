@@ -17,7 +17,7 @@ import {
 import { ChessEngine } from "./engine.js";
 import { executeMove } from "./executeMove.js";
 import { colorRoom, joinMatchRooms, matchRoom, type AppSocket } from "../realtime/io.js";
-import { validateProposeMove, validateVoteMove } from "../realtime/validate.js";
+import { validateProposeMove, validateSendChatMessage, validateVoteMove } from "../realtime/validate.js";
 
 /**
  * US1 turn resolution: highest-voted proposal wins; ties broken by the earliest
@@ -247,6 +247,32 @@ export class TurnEngine {
     if (!match || match.status !== "ACTIVE") return;
     if (!match.participants.some((p) => p.userId === socket.data.userId)) return;
     await this.resolveTurn(matchId);
+  }
+
+  async onSendChatMessage(socket: AppSocket, raw: unknown): Promise<void> {
+    let payload;
+    try {
+      payload = validateSendChatMessage(raw);
+    } catch {
+      socket.emit("error", { code: "invalid_payload", message: "bad send_chat_message" });
+      return;
+    }
+    const match = await this.deps.db.match.findUnique({
+      where: { id: payload.matchId },
+      include: { participants: true },
+    });
+    if (!match) return;
+    const participant = match.participants.find((p) => p.userId === socket.data.userId);
+    if (!participant) return;
+    const color = participant.teamColor === "WHITE" ? "white" : "black";
+    this.deps.io
+      .to(colorRoom(payload.matchId, color))
+      .emit("chat_message", {
+        userId: socket.data.userId,
+        username: socket.data.username,
+        message: payload.message,
+        at: new Date().toISOString(),
+      });
   }
 
   async onDisconnect(socket: AppSocket): Promise<void> {

@@ -16,6 +16,9 @@ export function registerGameHandlers(io: AppServer, engine: TurnEngine): void {
     socket.on("execute_now", (raw: unknown) => {
       engine.onExecuteNow(socket, raw).catch((error) => console.error("[execute_now]", error));
     });
+    socket.on("send_chat_message", (raw: unknown) => {
+      engine.onSendChatMessage(socket, raw).catch((error) => console.error("[send_chat_message]", error));
+    });
     socket.on("disconnect", () => {
       engine.onDisconnect(socket).catch((error) => console.error("[disconnect]", error));
     });
