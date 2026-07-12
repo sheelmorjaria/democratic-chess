@@ -17,9 +17,11 @@ import {
   type Tally,
 } from "../voting/ephemeral.js";
 import { ChessEngine } from "./engine.js";
-import { executeMove } from "./executeMove.js";
+import { applyMove, executeMove } from "./executeMove.js";
 import { endMatch } from "./matchEnd.js";
+import { isSoloSide } from "./soloTurn.js";
 import { colorRoom, joinMatchRooms, matchRoom, type AppSocket } from "../realtime/io.js";
+import { logger } from "../observability/logger.js";
 import { validateProposeMove, validateSendChatMessage, validateVoteMove } from "../realtime/validate.js";
 
 /**
@@ -105,7 +107,9 @@ export class TurnEngine {
   private scheduleResolution(matchId: string, delayMs: number): void {
     this.clearTimer(matchId);
     const handle = setTimeout(() => {
-      this.resolveTurn(matchId).catch((error) => console.error("[turnEngine] resolve error", error));
+      this.resolveTurn(matchId).catch((error) =>
+        logger.error({ err: error, msg: "turnEngine.resolve.error", matchId }),
+      );
     }, delayMs);
     this.timers.set(matchId, handle);
   }
@@ -178,7 +182,9 @@ export class TurnEngine {
     await addPresence(this.deps.redis, matchId, color, socket.data.userId);
     socket.emit("match_start", {
       matchId,
+      mode: match.mode,
       youAre: color,
+      youAreSolo: isSoloSide(match, participant.teamColor),
       fen: match.fen,
       moveWindowSec: match.moveWindowSec,
     });
@@ -209,6 +215,26 @@ export class TurnEngine {
     const turnColor = match.turn === "WHITE" ? "white" : "black";
     if (color !== turnColor) {
       socket.emit("error", { code: "not_your_turn", message: "not your team's turn" });
+      return;
+    }
+
+    // US4 / FR-010: the solo player's turn bypasses voting — the move executes
+    // immediately on the authoritative game. Color-room isolation already keeps
+    // the opposing team's proposals/votes/chat off the solo client (AC2).
+    if (isSoloSide(match, participant.teamColor)) {
+      const soloProbe = new ChessEngine(match.fen);
+      if (!soloProbe.isLegal(payload.from, payload.to, payload.promotion)) {
+        socket.emit("error", { code: "illegal_move", message: "illegal move" });
+        return;
+      }
+      this.clearTimer(payload.matchId);
+      await applyMove(this.deps, payload.matchId, {
+        from: payload.from,
+        to: payload.to,
+        promotion: payload.promotion,
+      });
+      const updated = await this.deps.db.match.findUnique({ where: { id: payload.matchId } });
+      if (updated && updated.status === "ACTIVE") await this.openTurn(payload.matchId);
       return;
     }
 

@@ -63,3 +63,67 @@ export function addTeamMember(teamId: string, userId: string): Promise<void> {
 export function removeTeamMember(teamId: string, userId: string): Promise<void> {
   return request(`/teams/${teamId}/members/${userId}`, { method: "DELETE" }) as Promise<void>;
 }
+
+export interface MatchSummary {
+  id: string;
+  mode: "TEAM_VS_TEAM" | "SOLO_VS_TEAM";
+  status: "WAITING" | "ACTIVE" | "COMPLETED" | "ABORTED";
+  winner: "WHITE" | "BLACK" | "DRAW" | null;
+  fen: string;
+  turn: "WHITE" | "BLACK";
+  moveWindowSec: number;
+}
+
+/** Authoritative match state — the resync source of truth on reconnect. */
+export function getMatch(matchId: string): Promise<MatchSummary> {
+  return request(`/matches/${matchId}`) as Promise<MatchSummary>;
+}
+
+export interface LeaderboardEntry {
+  subjectId: string;
+  name: string;
+  rating: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
+export function getLeaderboard(type: "TEAM" | "SOLO" = "TEAM"): Promise<{ entries: LeaderboardEntry[] }> {
+  return request(`/leaderboard?type=${type}`) as Promise<{ entries: LeaderboardEntry[] }>;
+}
+
+export interface QueueJoinResult {
+  queued: boolean;
+  searchBand?: number;
+  matchId?: string;
+  mode?: string;
+}
+
+export function joinQueueSolo(): Promise<QueueJoinResult> {
+  return request("/queue/join", {
+    method: "POST",
+    body: JSON.stringify({ subjectType: "SOLO" }),
+  }) as Promise<QueueJoinResult>;
+}
+
+export function joinQueueTeam(teamId: string): Promise<QueueJoinResult> {
+  return request("/queue/join", {
+    method: "POST",
+    body: JSON.stringify({ subjectType: "TEAM", subjectId: teamId }),
+  }) as Promise<QueueJoinResult>;
+}
+
+export function leaveQueue(): Promise<void> {
+  return request("/queue/leave", { method: "DELETE" }) as Promise<void>;
+}
+
+export interface QueueStatus {
+  state: "idle" | "queued" | "matched";
+  estimatedWaitSec: number | null;
+  matchId?: string;
+  mode?: string;
+}
+
+export function getQueueStatus(): Promise<QueueStatus> {
+  return request("/queue/status") as Promise<QueueStatus>;
+}

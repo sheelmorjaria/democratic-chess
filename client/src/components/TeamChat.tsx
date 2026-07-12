@@ -28,6 +28,7 @@ export default function TeamChat({ messages, onSend }: TeamChatProps) {
     <section style={{ border: "1px solid #ccc", padding: "0.75rem", minWidth: 240 }}>
       <h3>Team chat</h3>
       <ul style={{ listStyle: "none", padding: 0, maxHeight: 200, overflowY: "auto" }}>
+        {messages.length === 0 && <li style={{ color: "#999" }}>No messages yet.</li>}
         {messages.map((m, i) => (
           <li key={i}>
             <strong>{m.username}:</strong> {m.message}

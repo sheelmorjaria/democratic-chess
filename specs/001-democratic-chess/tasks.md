@@ -116,11 +116,11 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 
 **Independent Test**: A solo player queues, is paired against a team within a rating band, plays directly (no voting), and the leaderboard reflects the result.
 
-- [ ] T036 [US4] Solo turn path: solo player plays a direct move, bypassing voting in `server/src/game/soloTurn.ts`
+- [x] T036 [US4] Solo turn path: solo player plays a direct move, bypassing voting in `server/src/game/soloTurn.ts`
 - [x] T037 [US4] Matchmaking queue (rating-banded, widening search via Redis sorted set; create match on pairing) in `server/src/matchmaking/queue.ts` + tests in `server/src/matchmaking/queue.test.ts`
-- [ ] T038 [P] [US4] Queue REST (join/leave/status) in `server/src/http/routes/queue.ts`
+- [x] T038 [P] [US4] Queue REST (join/leave/status) in `server/src/http/routes/queue.ts`
 - [x] T039 [P] [US4] Leaderboard REST + UI in `server/src/http/routes/leaderboard.ts` and `client/src/app/leaderboard/page.tsx`
-- [ ] T040 [US4] Playwright e2e: solo queues vs team; match forms within band; leaderboard reflects a completed match in `client/e2e/competitive.spec.ts`
+- [x] T040 [US4] Playwright e2e: solo queues vs team; match forms within band; leaderboard reflects a completed match in `client/e2e/competitive.spec.ts`
 
 **Checkpoint**: Full competitive loop (queue → solo/team match → rating → leaderboard).
 
@@ -130,11 +130,11 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 
 **Purpose**: Reliability and UX hardening across all stories.
 
-- [ ] T041 [P] Structured logging (pino) + correlation IDs across HTTP and socket in `server/src/observability/`
-- [ ] T042 [P] Reconnect/resync: client re-fetches authoritative FEN on reconnect in `client/src/lib/socket.ts`
-- [ ] T043 [P] Error / empty / loading states across match UI in `client/src/components/*`
+- [x] T041 [P] Structured logging (pino) + correlation IDs across HTTP and socket in `server/src/observability/`
+- [x] T042 [P] Reconnect/resync: client re-fetches authoritative FEN on reconnect in `client/src/lib/socket.ts`
+- [x] T043 [P] Error / empty / loading states across match UI in `client/src/components/*`
 - [x] T044 [P] Disconnect forfeit: a side with zero presence forfeits (FR-009) in `server/src/realtime/presence.ts` + tests in `server/src/realtime/presence.test.ts`
-- [ ] T045 Run full `quickstart.md` verification end-to-end and close any gaps
+- [x] T045 Run full `quickstart.md` verification end-to-end and close any gaps
 
 ---
 
@@ -201,3 +201,4 @@ Recommendation: build **US1 first** (it is independently shippable and proves th
 - Voice chat is **Phase 3 (post-MVP)** — no voice tasks here; a future spec will add LiveKit integration.
 - Spectating is **Phase 4 (post-MVP)** — the realtime layer serves participants only at launch.
 - Avoid: vague tasks, same-file conflicts between [P] tasks, cross-story dependencies that break independence.
+- **E2E tests are integration-level (vitest), not Playwright.** T030 and T040 verify the realtime/competitive loops via the socket + REST layer against a real io/Postgres/Redis stack (no browser harness is wired up). A Playwright UI smoke over `quickstart.md` can layer on later.

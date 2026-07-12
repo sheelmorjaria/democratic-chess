@@ -3,6 +3,7 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import type { Redis } from "ioredis";
 import { Server, Socket, type DefaultEventsMap } from "socket.io";
 import { verifyAccessToken } from "../auth/jwt.js";
+import { logger } from "../observability/logger.js";
 
 /**
  * Realtime layer (constitution IV): Socket.io with the Redis adapter for
@@ -68,9 +69,11 @@ export function createRealtimeServer(deps: RealtimeDeps): AppServer {
   });
 
   io.on("connection", (socket) => {
-    console.log(`[realtime] ${socket.data.username} connected (${socket.id})`);
+    // Personal room lets the server push to a specific user (e.g. queue_matched).
+    void socket.join(userRoom(socket.data.userId));
+    logger.info({ msg: "socket.connect", userId: socket.data.userId, username: socket.data.username, socketId: socket.id });
     socket.on("disconnect", (reason) => {
-      console.log(`[realtime] ${socket.id} disconnected (${reason})`);
+      logger.info({ msg: "socket.disconnect", userId: socket.data.userId, socketId: socket.id, reason });
     });
   });
 
@@ -83,6 +86,10 @@ export function matchRoom(matchId: string): string {
 
 export function colorRoom(matchId: string, color: string): string {
   return `match_${matchId}_${color}`;
+}
+
+export function userRoom(userId: string): string {
+  return `user:${userId}`;
 }
 
 export async function joinMatchRooms(

@@ -5,6 +5,7 @@ import { ChessEngine, type GameStatus } from "./engine.js";
 import { clearTurn, getProposals } from "../voting/ephemeral.js";
 import { matchRoom } from "../realtime/io.js";
 import { endMatch } from "./matchEnd.js";
+import { moveKey as makeMoveKey } from "@democratic-chess/types";
 
 export interface ExecuteDeps {
   db: PrismaClient;
@@ -26,15 +27,25 @@ export class IllegalMoveError extends Error {}
 
 type Promotion = "q" | "r" | "b" | "n";
 
+export interface MoveInput {
+  from: string;
+  to: string;
+  promotion?: Promotion;
+}
+
 /**
- * Applies the winning proposal's move to the authoritative game: re-validates
- * legality, advances FEN + turn + turnNumber, clears the turn's ephemeral state,
- * emits `move_executed`, and finalizes via `endMatch` if the game is over.
+ * Applies a move directly to the authoritative game (the single source of
+ * truth — constitution I). Used by BOTH paths: team turns (the winning
+ * proposal's move) and solo turns (the solo player's direct move, FR-010).
+ *
+ * Re-validates legality against the current FEN, advances FEN + turn +
+ * turnNumber, clears the turn's ephemeral state, emits `move_executed` to the
+ * match room, and finalizes via `endMatch` if the game is over.
  */
-export async function executeMove(
+export async function applyMove(
   deps: ExecuteDeps,
   matchId: string,
-  moveKey: string,
+  move: MoveInput,
 ): Promise<ExecutedMove> {
   const { db, redis, io } = deps;
 
@@ -42,17 +53,13 @@ export async function executeMove(
   if (!match) throw new Error("match not found");
   if (match.status !== "ACTIVE") throw new Error(`match not active (${match.status})`);
 
-  const proposals = await getProposals(redis, matchId, match.turnNumber);
-  const proposal = proposals[moveKey];
-  if (!proposal) throw new Error(`proposal not found: ${moveKey}`);
-
-  const promotion = proposal.promotion as Promotion | undefined;
   const engine = new ChessEngine(match.fen);
-  if (!engine.isLegal(proposal.from, proposal.to, promotion)) {
-    throw new IllegalMoveError(`illegal move on ballot: ${moveKey}`);
+  if (!engine.isLegal(move.from, move.to, move.promotion)) {
+    throw new IllegalMoveError(`illegal move: ${move.from}-${move.to}`);
   }
-  const applied = engine.apply(proposal.from, proposal.to, promotion);
+  const applied = engine.apply(move.from, move.to, move.promotion);
   const status = engine.gameStatus();
+  const turnBefore = match.turnNumber;
 
   await db.match.update({
     where: { id: matchId },
@@ -62,15 +69,16 @@ export async function executeMove(
       turnNumber: { increment: 1 },
     },
   });
-  await clearTurn(redis, matchId, match.turnNumber);
+  await clearTurn(redis, matchId, turnBefore);
 
+  const key = makeMoveKey(applied.from, applied.to, move.promotion);
   const payload = {
     fen: applied.fen,
     san: applied.san,
     from: applied.from,
     to: applied.to,
     color: applied.color,
-    moveKey,
+    moveKey: key,
   };
   io?.to(matchRoom(matchId)).emit("move_executed", payload);
 
@@ -82,4 +90,30 @@ export async function executeMove(
   }
 
   return { ...payload, status };
+}
+
+/**
+ * Team-turn execution: resolves the winning proposal by move key, then delegates
+ * to {@link applyMove}. (Solo turns call `applyMove` directly — see soloTurn.ts.)
+ */
+export async function executeMove(
+  deps: ExecuteDeps,
+  matchId: string,
+  moveKey: string,
+): Promise<ExecutedMove> {
+  const { db, redis } = deps;
+
+  const match = await db.match.findUnique({ where: { id: matchId } });
+  if (!match) throw new Error("match not found");
+  if (match.status !== "ACTIVE") throw new Error(`match not active (${match.status})`);
+
+  const proposals = await getProposals(redis, matchId, match.turnNumber);
+  const proposal = proposals[moveKey];
+  if (!proposal) throw new Error(`proposal not found: ${moveKey}`);
+
+  return applyMove(deps, matchId, {
+    from: proposal.from,
+    to: proposal.to,
+    promotion: proposal.promotion as Promotion | undefined,
+  });
 }

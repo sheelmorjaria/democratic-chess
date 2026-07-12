@@ -30,7 +30,10 @@ export default function VotingSidebar({
       <h3>Ballot {turnColor ? `(${turnColor} to move)` : ""}</h3>
       {deadline && <p style={{ color: "#666" }}>window ends {new Date(deadline).toLocaleTimeString()}</p>}
       {!myTurn && <p style={{ color: "#999" }}>Waiting for your team&apos;s turn…</p>}
-      {proposals.length === 0 && <p>No proposals yet.</p>}
+      {myTurn && proposals.length === 0 && (
+        <p style={{ color: "#999" }}>No proposals yet — drag a piece to propose a move.</p>
+      )}
+      {proposals.length === 0 && !myTurn && <p style={{ color: "#999" }}>No proposals yet.</p>}
       <ul style={{ listStyle: "none", padding: 0 }}>
         {proposals.map((p) => (
           <li key={p.moveKey} style={{ marginBottom: 6 }}>

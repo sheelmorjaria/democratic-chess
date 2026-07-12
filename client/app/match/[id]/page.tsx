@@ -2,25 +2,36 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getSocket } from "@/lib/socket";
+import {
+  getSocket,
+  onConnectionChange,
+  setActiveMatch,
+  type ConnectionState,
+} from "@/lib/socket";
+import { getMatch } from "@/lib/api";
 import Board from "@/components/Board";
 import VotingSidebar, { type ProposalView } from "@/components/VotingSidebar";
 import TeamChat, { type ChatMessage } from "@/components/TeamChat";
 
 interface MatchStart {
   matchId: string;
+  mode: "TEAM_VS_TEAM" | "SOLO_VS_TEAM";
   youAre: "white" | "black";
+  youAreSolo: boolean;
   fen: string;
   moveWindowSec: number;
 }
+
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 export default function MatchPage() {
   const params = useParams();
   const matchId = String((params as { id?: string }).id ?? "");
   const router = useRouter();
 
-  const [fen, setFen] = useState("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+  const [fen, setFen] = useState(START_FEN);
   const [color, setColor] = useState<"white" | "black">("white");
+  const [youAreSolo, setYouAreSolo] = useState(false);
   const [turnColor, setTurnColor] = useState<"white" | "black" | null>(null);
   const [deadline, setDeadline] = useState<string | null>(null);
   const [proposals, setProposals] = useState<ProposalView[]>([]);
@@ -28,18 +39,52 @@ export default function MatchPage() {
   const [chats, setChats] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [conn, setConn] = useState<ConnectionState>("connecting");
 
+  // Seed authoritative state + register for reconnect-resync, then wire socket events.
   useEffect(() => {
+    let cancelled = false;
+    setActiveMatch(matchId);
+    const unsub = onConnectionChange(setConn);
+
+    // Resync from the single source of truth (handles late load AND reconnect).
+    async function resync() {
+      try {
+        const match = await getMatch(matchId);
+        if (cancelled) return;
+        setFen(match.fen);
+        setTurnColor(match.turn === "WHITE" ? "white" : "black");
+        if (match.status !== "ACTIVE") {
+          setOver(
+            match.winner
+              ? `Match over: ${match.winner.toLowerCase()}`
+              : `Match ${match.status.toLowerCase()}`,
+          );
+        }
+      } catch {
+        if (!cancelled) setError("Couldn't load match state.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void resync();
+
     const socket = getSocket();
     if (!socket) {
       router.replace("/login");
-      return;
+      return () => {
+        unsub();
+        setActiveMatch(null);
+      };
     }
     socket.emit("join_match", { matchId });
 
     const onMatchStart = (data: MatchStart) => {
       setFen(data.fen);
       setColor(data.youAre);
+      setYouAreSolo(!!data.youAreSolo);
+      setLoading(false);
     };
     const onTurnStart = (data: { color: "white" | "black"; deadlineAt: string }) => {
       setTurnColor(data.color);
@@ -71,6 +116,9 @@ export default function MatchPage() {
     socket.on("error", onError);
 
     return () => {
+      cancelled = true;
+      unsub();
+      setActiveMatch(null);
       socket.off("match_start", onMatchStart);
       socket.off("turn_start", onTurnStart);
       socket.off("new_proposal", onProposal);
@@ -83,11 +131,28 @@ export default function MatchPage() {
   }, [matchId, router]);
 
   const myTurn = color === turnColor;
+  const reconnecting = conn === "reconnecting" || conn === "disconnected";
+
+  if (loading) {
+    return (
+      <main style={{ padding: "1.5rem", fontFamily: "system-ui, sans-serif" }}>
+        <h1>Match {matchId.slice(0, 8)}…</h1>
+        <p>Loading match…</p>
+      </main>
+    );
+  }
 
   return (
     <main style={{ padding: "1.5rem", fontFamily: "system-ui, sans-serif" }}>
       <h1>Match {matchId.slice(0, 8)}…</h1>
-      <p>You are <strong>{color}</strong>. {turnColor ? `${turnColor} to move` : ""}</p>
+      <p>
+        You are <strong>{color}</strong>.{" "}
+        {youAreSolo ? "Solo vs Team — " : ""}
+        {turnColor ? `${turnColor} to move` : ""}
+      </p>
+      {reconnecting && (
+        <p style={{ color: "darkorange" }}>Connection lost — reconnecting…</p>
+      )}
       {error && <p style={{ color: "crimson" }}>{error}</p>}
       {over && <p style={{ color: "green" }}>{over}</p>}
       <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
@@ -101,18 +166,23 @@ export default function MatchPage() {
             }
           />
         </div>
-        <VotingSidebar
-          proposals={proposals}
-          tallies={tallies}
-          myTurn={myTurn}
-          turnColor={turnColor}
-          deadline={deadline}
-          onVote={(moveKey) => getSocket()?.emit("vote_move", { matchId, moveKey })}
-        />
-        <TeamChat
-          messages={chats}
-          onSend={(message) => getSocket()?.emit("send_chat_message", { matchId, message })}
-        />
+        {/* Solo player: no ballot/chat — they see only executed moves (AC2). */}
+        {!youAreSolo && (
+          <>
+            <VotingSidebar
+              proposals={proposals}
+              tallies={tallies}
+              myTurn={myTurn}
+              turnColor={turnColor}
+              deadline={deadline}
+              onVote={(moveKey) => getSocket()?.emit("vote_move", { matchId, moveKey })}
+            />
+            <TeamChat
+              messages={chats}
+              onSend={(message) => getSocket()?.emit("send_chat_message", { matchId, message })}
+            />
+          </>
+        )}
       </div>
     </main>
   );

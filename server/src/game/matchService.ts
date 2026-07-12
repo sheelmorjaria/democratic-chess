@@ -17,6 +17,17 @@ export interface CreateTeamMatchInput {
   timeBankMs?: number;
 }
 
+export interface CreateSoloMatchInput {
+  /** The lone player. */
+  soloUserId: string;
+  /** The team they challenge. */
+  teamId: string;
+  /** Which color the solo player takes (defaults to WHITE). */
+  soloColor?: "WHITE" | "BLACK";
+  moveWindowSec?: number;
+  timeBankMs?: number;
+}
+
 /**
  * Creates a Team vs Team match (direct challenge), seeds the start FEN and time
  * banks, and creates a MatchParticipant row for each roster member with their
@@ -62,4 +73,59 @@ export async function createTeamMatch(
       },
     },
   });
+}
+
+/**
+ * Creates a Solo vs Team match (FR-001/FR-010). The solo player is seeded as the
+ * sole participant + captain on `soloColor`; the team's roster is seeded on the
+ * opposite color. The solo side's team id stays null (how `soloColor`/`isSoloSide`
+ * identify it later). A SOLO rating is ensured for the solo player if missing.
+ */
+export async function createSoloMatch(
+  db: PrismaClient,
+  input: CreateSoloMatchInput,
+): Promise<Match> {
+  const team = await db.team.findUnique({ where: { id: input.teamId }, include: { members: true } });
+  if (!team) throw new MatchServiceError("team_not_found", "team not found");
+
+  const soloColor = input.soloColor ?? "WHITE";
+  const teamColor: "WHITE" | "BLACK" = soloColor === "WHITE" ? "BLACK" : "WHITE";
+  const timeBank = input.timeBankMs ?? 600_000;
+
+  const match = await db.match.create({
+    data: {
+      mode: "SOLO_VS_TEAM",
+      status: "ACTIVE",
+      fen: START_FEN,
+      turn: "WHITE",
+      moveWindowSec: input.moveWindowSec ?? 60,
+      whiteTimeRemainingMs: timeBank,
+      blackTimeRemainingMs: timeBank,
+      whiteTeamId: teamColor === "WHITE" ? team.id : null,
+      blackTeamId: teamColor === "BLACK" ? team.id : null,
+      participants: {
+        create: [
+          {
+            userId: input.soloUserId,
+            teamColor: soloColor,
+            isCaptain: true,
+          },
+          ...team.members.map((member) => ({
+            userId: member.userId,
+            teamColor: teamColor,
+            isCaptain: member.role === "CAPTAIN",
+          })),
+        ],
+      },
+    },
+  });
+
+  // Ensure the solo player has a SOLO rating to update on match_end.
+  await db.rating.upsert({
+    where: { userId: input.soloUserId },
+    create: { subjectType: "SOLO", userId: input.soloUserId },
+    update: {},
+  });
+
+  return match;
 }

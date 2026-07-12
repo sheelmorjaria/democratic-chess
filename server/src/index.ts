@@ -6,6 +6,7 @@ import { getRedis } from "./db/redis.js";
 import { createRealtimeServer } from "./realtime/io.js";
 import { registerGameHandlers } from "./realtime/handlers.js";
 import { initRuntime } from "./game/runtime.js";
+import { logger } from "./observability/logger.js";
 
 const port = Number(process.env.PORT ?? 3001);
 
@@ -20,9 +21,9 @@ const io = createRealtimeServer({ httpServer, redis });
 const turnEngine = initRuntime({ db, redis, io });
 registerGameHandlers(io, turnEngine);
 
-const app = createApp({ db });
+const app = createApp({ db, redis, io });
 httpServer.on("request", app);
 
 httpServer.listen(port, () => {
-  console.log(`[server] listening on http://localhost:${port}`);
+  logger.info({ msg: "server.listening", url: `http://localhost:${port}` });
 });
