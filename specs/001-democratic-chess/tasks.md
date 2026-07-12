@@ -44,16 +44,16 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 
 **⚠️ CRITICAL**: No user story work begins until this phase is complete.
 
-- [ ] T008 [P] Prisma schema + initial migration for all durable entities (User, Team, TeamMembership, Match, MatchParticipant, Rating) in `server/prisma/schema.prisma`
-- [ ] T009 [P] Redis connection module (ioredis) in `server/src/db/redis.ts`
-- [ ] T010 [P] Auth core: bcrypt password hashing + JWT issue/verify (jose) in `server/src/auth/{crypto.ts,jwt.ts}`
-- [ ] T011 REST auth endpoints (register/login/refresh/me) in `server/src/http/routes/auth.ts` + Supertest contract tests in `server/src/http/routes/auth.test.ts`
-- [ ] T012 [P] Shared socket-event + domain types with zod schemas in `packages/types/src/{events.ts,enums.ts}`
-- [ ] T013 Socket.io server with `@socket.io/redis-adapter`, JWT handshake auth, and room join/leave helpers in `server/src/realtime/io.ts`
-- [ ] T014 [P] Authoritative `chess.js` engine wrapper (from FEN → validate → apply → SAN → game-over) in `server/src/game/engine.ts` + unit tests in `server/src/game/engine.test.ts`
-- [ ] T015 [P] Redis ephemeral helpers (proposals hash, vote sets, one-vote guard, turn-timer key w/ EX, presence set) in `server/src/voting/ephemeral.ts` + unit tests in `server/src/voting/ephemeral.test.ts`
-- [ ] T016 [P] zod validation guards at socket + REST boundaries in `server/src/realtime/validate.ts` and `server/src/http/validate.ts`
-- [ ] T017 [P] Repositories for durable entities in `server/src/db/repositories/{users,teams,matches,ratings}.ts`
+- [x] T008 [P] Prisma schema + initial migration for all durable entities (User, Team, TeamMembership, Match, MatchParticipant, Rating) in `server/prisma/schema.prisma`
+- [x] T009 [P] Redis connection module (ioredis) in `server/src/db/redis.ts`
+- [x] T010 [P] Auth core: bcrypt password hashing + JWT issue/verify (jose) in `server/src/auth/{crypto.ts,jwt.ts}`
+- [x] T011 REST auth endpoints (register/login/refresh/me) in `server/src/http/routes/auth.ts` + Supertest contract tests in `server/src/http/routes/auth.test.ts`
+- [x] T012 [P] Shared socket-event + domain types with zod schemas in `packages/types/src/{events.ts,enums.ts}`
+- [x] T013 Socket.io server with `@socket.io/redis-adapter`, JWT handshake auth, and room join/leave helpers in `server/src/realtime/io.ts`
+- [x] T014 [P] Authoritative `chess.js` engine wrapper (from FEN → validate → apply → SAN → game-over) in `server/src/game/engine.ts` + unit tests in `server/src/game/engine.test.ts`
+- [x] T015 [P] Redis ephemeral helpers (proposals hash, vote sets, one-vote guard, turn-timer key w/ EX, presence set) in `server/src/voting/ephemeral.ts` + unit tests in `server/src/voting/ephemeral.test.ts`
+- [x] T016 [P] zod validation guards at socket + REST boundaries in `server/src/realtime/validate.ts` and `server/src/http/validate.ts`
+- [x] T017 [P] Repositories for durable entities in `server/src/db/repositories/{users,teams,matches,ratings}.ts`
 
 **Checkpoint**: Foundation ready — auth works, engine validates moves, ephemeral layer + realtime rooms operational.
 
