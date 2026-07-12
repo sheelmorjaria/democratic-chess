@@ -1,6 +1,14 @@
 "use client";
 
-import { Chessboard } from "react-chessboard";
+import dynamic from "next/dynamic";
+
+// react-chessboard touches `window`/`document` at render, so it must not run
+// during Next's server-side pre-render — load it client-only, else the board
+// renders empty while the rest of the page is fine.
+const Chessboard = dynamic(() => import("react-chessboard").then((m) => m.Chessboard), {
+  ssr: false,
+  loading: () => <div style={{ height: 480, maxWidth: 480, background: "#eee" }}>Loading board…</div>,
+});
 
 interface BoardProps {
   fen: string;
@@ -23,7 +31,7 @@ export default function Board({ fen, myTurn, orientation = "white", onPropose }:
         position={fen}
         arePiecesDraggable={myTurn}
         boardOrientation={orientation}
-        onPieceDrop={(sourceSquare, targetSquare, piece) => {
+        onPieceDrop={(sourceSquare: string, targetSquare: string, piece: string) => {
           const promotion = isPromotion(piece, targetSquare) ? "q" : undefined;
           onPropose(sourceSquare, targetSquare, promotion);
           return true;
