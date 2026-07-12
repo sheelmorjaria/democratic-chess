@@ -162,4 +162,16 @@ describe("US1 realtime loop (socket-level e2e)", () => {
     white.disconnect();
     black.disconnect();
   }, 20000);
+
+  it("forfeits a side when its last member disconnects (FR-009)", async () => {
+    const white = await connect(fx.white);
+    white.emit("join_match", { matchId: fx.matchId });
+    await waitFor(white, "match_start");
+    white.disconnect();
+    await new Promise((resolve) => setTimeout(resolve, 600)); // let disconnect + forfeit settle
+
+    const match = await db.match.findUnique({ where: { id: fx.matchId } });
+    expect(match?.status).toBe("COMPLETED");
+    expect(match?.winner).toBe("BLACK");
+  }, 15000);
 });

@@ -11,12 +11,14 @@ import {
   getProposals,
   getTallies,
   getVoterChoice,
+  presenceCount,
   removePresence,
   type ProposalRecord,
   type Tally,
 } from "../voting/ephemeral.js";
 import { ChessEngine } from "./engine.js";
 import { executeMove } from "./executeMove.js";
+import { endMatch } from "./matchEnd.js";
 import { colorRoom, joinMatchRooms, matchRoom, type AppSocket } from "../realtime/io.js";
 import { validateProposeMove, validateSendChatMessage, validateVoteMove } from "../realtime/validate.js";
 
@@ -300,8 +302,19 @@ export class TurnEngine {
   }
 
   async onDisconnect(socket: AppSocket): Promise<void> {
-    if (socket.data.matchId && socket.data.color) {
-      await removePresence(this.deps.redis, socket.data.matchId, socket.data.color, socket.data.userId);
+    const { matchId, color, userId } = socket.data;
+    if (!matchId || !color || !userId) return;
+    await removePresence(this.deps.redis, matchId, color, userId);
+    const remaining = await presenceCount(this.deps.redis, matchId, color);
+    if (remaining === 0) {
+      const match = await this.deps.db.match.findUnique({ where: { id: matchId } });
+      if (match && match.status === "ACTIVE") {
+        const opponent = color === "white" ? "BLACK" : "WHITE";
+        await endMatch({ db: this.deps.db, io: this.deps.io }, matchId, {
+          winner: opponent,
+          reason: "forfeit",
+        });
+      }
     }
   }
 

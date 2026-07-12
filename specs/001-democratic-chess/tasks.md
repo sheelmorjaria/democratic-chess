@@ -133,7 +133,7 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 - [ ] T041 [P] Structured logging (pino) + correlation IDs across HTTP and socket in `server/src/observability/`
 - [ ] T042 [P] Reconnect/resync: client re-fetches authoritative FEN on reconnect in `client/src/lib/socket.ts`
 - [ ] T043 [P] Error / empty / loading states across match UI in `client/src/components/*`
-- [ ] T044 [P] Disconnect forfeit: a side with zero presence forfeits (FR-009) in `server/src/realtime/presence.ts` + tests in `server/src/realtime/presence.test.ts`
+- [x] T044 [P] Disconnect forfeit: a side with zero presence forfeits (FR-009) in `server/src/realtime/presence.ts` + tests in `server/src/realtime/presence.test.ts`
 - [ ] T045 Run full `quickstart.md` verification end-to-end and close any gaps
 
 ---

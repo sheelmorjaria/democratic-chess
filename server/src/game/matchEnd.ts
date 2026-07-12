@@ -10,7 +10,7 @@ export interface MatchDeps {
 
 export interface MatchOutcome {
   winner: MatchWinner;
-  reason: "checkmate" | "stalemate" | "draw" | "resignation" | "timeout" | "aborted";
+  reason: "checkmate" | "stalemate" | "draw" | "resignation" | "timeout" | "aborted" | "forfeit";
 }
 
 /**
