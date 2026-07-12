@@ -1,0 +1,29 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Match layout: side-by-side on wide screens, stacked on phones. */
+.dc-match-layout {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+@media (max-width: 720px) {
+  .dc-match-layout {
+    flex-direction: column;
+  }
+}
+
+/* Lock touch handling while dragging pieces (constitution III mobile parity). */
+.dc-board {
+  touch-action: none;
+}

@@ -89,9 +89,9 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 
 **Independent Test**: On a phone-sized viewport, a player completes propose → vote → chat with no core mechanic blocked.
 
-- [ ] T031 [P] [US2] Responsive layout (full-screen board; bottom-tab/drawer for votes + chat) in `client/src/components/MobileLayout.tsx`
-- [ ] T032 [P] [US2] `touch-action: none` + drag handling on the board for mobile in `client/src/components/Board.tsx`
-- [ ] T033 [US2] Capacitor wrap + config and iOS/Android build scripts in `client/capacitor.config.ts`
+- [x] T031 [P] [US2] Responsive layout (full-screen board; bottom-tab/drawer for votes + chat) in `client/src/components/MobileLayout.tsx`
+- [x] T032 [P] [US2] `touch-action: none` + drag handling on the board for mobile in `client/src/components/Board.tsx`
+- [x] T033 [US2] Capacitor wrap + config and iOS/Android build scripts in `client/capacitor.config.ts`
 
 **Checkpoint**: US1 and US2 both work, web + mobile parity achieved.
 

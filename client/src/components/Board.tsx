@@ -17,16 +17,18 @@ function isPromotion(piece: string, target: string): boolean {
 
 export default function Board({ fen, myTurn, orientation = "white", onPropose }: BoardProps) {
   return (
-    <Chessboard
-      id="dc-board"
-      position={fen}
-      arePiecesDraggable={myTurn}
-      boardOrientation={orientation}
-      onPieceDrop={(sourceSquare, targetSquare, piece) => {
-        const promotion = isPromotion(piece, targetSquare) ? "q" : undefined;
-        onPropose(sourceSquare, targetSquare, promotion);
-        return true;
-      }}
-    />
+    <div className="dc-board" style={{ touchAction: "none", maxWidth: 480 }}>
+      <Chessboard
+        id="dc-board"
+        position={fen}
+        arePiecesDraggable={myTurn}
+        boardOrientation={orientation}
+        onPieceDrop={(sourceSquare, targetSquare, piece) => {
+          const promotion = isPromotion(piece, targetSquare) ? "q" : undefined;
+          onPropose(sourceSquare, targetSquare, promotion);
+          return true;
+        }}
+      />
+    </div>
   );
 }
