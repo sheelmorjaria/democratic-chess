@@ -77,7 +77,7 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 - [x] T027 [P] [US1] Voting sidebar (list proposals, vote buttons, live tallies, turn-timer display) in `client/src/components/VotingSidebar.tsx`
 - [x] T028 [P] [US1] Team text-chat component (same-color room only) in `client/src/components/TeamChat.tsx`
 - [x] T029 [P] [US1] Lobby: create/join team, form sides, direct-challenge to start a match in `client/src/app/lobby/page.tsx`
-- [ ] T030 [US1] Playwright e2e for quickstart scenario A (two browsers: propose/vote/auto-execute; board syncs; cross-room isolation) in `client/e2e/core-loop.spec.ts`
+- [x] T030 [US1] Playwright e2e for quickstart scenario A (two browsers: propose/vote/auto-execute; board syncs; cross-room isolation) in `client/e2e/core-loop.spec.ts`
 
 **Checkpoint**: US1 fully functional and independently testable — the MVP centerpiece.
 

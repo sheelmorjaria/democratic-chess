@@ -107,6 +107,12 @@ export class TurnEngine {
     }
   }
 
+  /** Clears all armed turn timers (call on shutdown / test teardown). */
+  dispose(): void {
+    for (const handle of this.timers.values()) clearTimeout(handle);
+    this.timers.clear();
+  }
+
   /** Window-expiry / execute_now: run resolution, then advance or finalize. */
   async resolveTurn(matchId: string): Promise<void> {
     this.clearTimer(matchId);
