@@ -117,9 +117,9 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 **Independent Test**: A solo player queues, is paired against a team within a rating band, plays directly (no voting), and the leaderboard reflects the result.
 
 - [ ] T036 [US4] Solo turn path: solo player plays a direct move, bypassing voting in `server/src/game/soloTurn.ts`
-- [ ] T037 [US4] Matchmaking queue (rating-banded, widening search via Redis sorted set; create match on pairing) in `server/src/matchmaking/queue.ts` + tests in `server/src/matchmaking/queue.test.ts`
+- [x] T037 [US4] Matchmaking queue (rating-banded, widening search via Redis sorted set; create match on pairing) in `server/src/matchmaking/queue.ts` + tests in `server/src/matchmaking/queue.test.ts`
 - [ ] T038 [P] [US4] Queue REST (join/leave/status) in `server/src/http/routes/queue.ts`
-- [ ] T039 [P] [US4] Leaderboard REST + UI in `server/src/http/routes/leaderboard.ts` and `client/src/app/leaderboard/page.tsx`
+- [x] T039 [P] [US4] Leaderboard REST + UI in `server/src/http/routes/leaderboard.ts` and `client/src/app/leaderboard/page.tsx`
 - [ ] T040 [US4] Playwright e2e: solo queues vs team; match forms within band; leaderboard reflects a completed match in `client/e2e/competitive.spec.ts`
 
 **Checkpoint**: Full competitive loop (queue → solo/team match → rating → leaderboard).
