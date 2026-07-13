@@ -9,6 +9,7 @@ import { createLeaderboardRouter } from "./routes/leaderboard.js";
 import { createMatchesRouter } from "./routes/matches.js";
 import { createQueueRouter } from "./routes/queue.js";
 import { createTeamsRouter } from "./routes/teams.js";
+import { createUsersRouter } from "./routes/users.js";
 import { requestContext, requestLogger, type ContextualRequest } from "../observability/http.js";
 import { logger } from "../observability/logger.js";
 
@@ -41,6 +42,7 @@ export function createApp(deps: AppDeps): Express {
   app.use("/teams", createTeamsRouter(deps.db));
   app.use("/matches", createMatchesRouter(deps.db));
   app.use("/leaderboard", createLeaderboardRouter(deps.db));
+  app.use("/users", createUsersRouter(deps.db));
   if (deps.redis && deps.io) {
     app.use("/queue", createQueueRouter(deps.db, deps.redis, deps.io));
   }

@@ -128,23 +128,25 @@ export interface SoloTeamPair {
 /**
  * US4 cross-type pairing: matches a queued SOLO player against a queued TEAM
  * within the older entry's widened band. Removes both from the queue on success.
- * (Team-vs-team pairing reuses {@link findMatch} with type "TEAM".)
+ * (Team-vs-team pairing reuses {@link findMatch} with type "TEAM".) The set-type
+ * names are overridable so tests can run on isolated namespaces.
  */
-export async function findSoloVsTeam(r: Redis, now: number): Promise<SoloTeamPair | null> {
-  const solos = await r.zrange(setKey(SOLO_VS_TEAM_SOLO), 0, -1);
+export async function findSoloVsTeam(
+  r: Redis,
+  now: number,
+  soloType: string = SOLO_VS_TEAM_SOLO,
+  teamType: string = SOLO_VS_TEAM_TEAM,
+): Promise<SoloTeamPair | null> {
+  const solos = await r.zrange(setKey(soloType), 0, -1);
   for (const soloId of solos) {
-    const sEntry = await r.hgetall(entryKey(SOLO_VS_TEAM_SOLO, soloId));
+    const sEntry = await r.hgetall(entryKey(soloType, soloId));
     if (!sEntry.rating) continue;
     const sRating = Number(sEntry.rating);
     const sBand = band(Number(sEntry.enqueuedAt), now);
-    const teams = await r.zrangebyscore(
-      setKey(SOLO_VS_TEAM_TEAM),
-      sRating - sBand,
-      sRating + sBand,
-    );
+    const teams = await r.zrangebyscore(setKey(teamType), sRating - sBand, sRating + sBand);
     for (const teamId of teams) {
-      await leaveQueue(r, SOLO_VS_TEAM_SOLO, soloId);
-      await leaveQueue(r, SOLO_VS_TEAM_TEAM, teamId);
+      await leaveQueue(r, soloType, soloId);
+      await leaveQueue(r, teamType, teamId);
       return { solo: soloId, team: teamId };
     }
   }

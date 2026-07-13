@@ -13,6 +13,7 @@ import {
   type QueueStatus,
 } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
+import RosterManager from "@/components/RosterManager";
 
 export default function LobbyPage() {
   const { user, ready, logout } = useAuth();
@@ -21,6 +22,8 @@ export default function LobbyPage() {
   const [whiteId, setWhiteId] = useState("");
   const [blackId, setBlackId] = useState("");
   const [queueTeamId, setQueueTeamId] = useState("");
+  const [rosterTeamId, setRosterTeamId] = useState("");
+  const [activeRosterId, setActiveRosterId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [queue, setQueue] = useState<QueueStatus>({ state: "idle", estimatedWaitSec: null });
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -162,6 +165,26 @@ export default function LobbyPage() {
             </form>
           </>
         )}
+      </div>
+
+      <div style={{ display: "grid", gap: "0.5rem", marginBottom: "2rem" }}>
+        <h2>Manage roster</h2>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setActiveRosterId(rosterTeamId.trim() || null);
+          }}
+          style={{ display: "grid", gap: "0.5rem" }}
+        >
+          <input
+            placeholder="your team id"
+            value={rosterTeamId}
+            onChange={(e) => setRosterTeamId(e.target.value)}
+            required
+          />
+          <button type="submit">Load roster</button>
+        </form>
+        {activeRosterId && <RosterManager teamId={activeRosterId} />}
       </div>
 
       {error && <p style={{ color: "crimson" }}>{error}</p>}

@@ -15,3 +15,7 @@ export async function findUserByEmail(db: PrismaClient, email: string): Promise<
 export async function findUserById(db: PrismaClient, id: string): Promise<User | null> {
   return db.user.findUnique({ where: { id } });
 }
+
+export async function findUserByUsername(db: PrismaClient, username: string): Promise<User | null> {
+  return db.user.findUnique({ where: { username } });
+}

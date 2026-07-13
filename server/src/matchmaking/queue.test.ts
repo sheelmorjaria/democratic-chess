@@ -1,13 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Redis } from "ioredis";
-import {
-  findMatch,
-  findSoloVsTeam,
-  joinQueue,
-  leaveQueue,
-  SOLO_VS_TEAM_SOLO,
-  SOLO_VS_TEAM_TEAM,
-} from "./queue.js";
+import { findMatch, findSoloVsTeam, joinQueue, leaveQueue } from "./queue.js";
 
 const redis = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379");
 const type = `test-${Math.random().toString(36).slice(2, 8)}`;
@@ -42,34 +35,38 @@ describe("matchmaking queue", () => {
 
 describe("solo-vs-team cross-type pairing", () => {
   const suf = Math.random().toString(36).slice(2, 8);
+  // Unique namespaces so these tests never collide with other files using the
+  // global SOLO/TEAM sets (e.g. competitive.test) when run in parallel.
+  const soloType = `SOLO-${suf}`;
+  const teamType = `TEAM-${suf}`;
   const solo = `solo-${suf}`;
   const team = `team-${suf}`;
 
   afterEach(async () => {
-    await leaveQueue(redis, SOLO_VS_TEAM_SOLO, solo);
-    await leaveQueue(redis, SOLO_VS_TEAM_TEAM, team);
+    await leaveQueue(redis, soloType, solo);
+    await leaveQueue(redis, teamType, team);
   });
 
   it("pairs a queued solo with a queued team within the band", async () => {
-    await joinQueue(redis, SOLO_VS_TEAM_SOLO, solo, 1200, 0);
-    await joinQueue(redis, SOLO_VS_TEAM_TEAM, team, 1250, 0); // 50 apart, within base band
-    const pair = await findSoloVsTeam(redis, 0);
+    await joinQueue(redis, soloType, solo, 1200, 0);
+    await joinQueue(redis, teamType, team, 1250, 0); // 50 apart, within base band
+    const pair = await findSoloVsTeam(redis, 0, soloType, teamType);
     expect(pair).toEqual({ solo: expect.any(String), team: expect.any(String) });
     expect(pair!.solo).toBe(solo);
     expect(pair!.team).toBe(team);
   });
 
   it("does not pair a solo and team outside the band at enqueue time", async () => {
-    await joinQueue(redis, SOLO_VS_TEAM_SOLO, solo, 1200, 0);
-    await joinQueue(redis, SOLO_VS_TEAM_TEAM, team, 1500, 0); // 300 apart, outside base band
-    expect(await findSoloVsTeam(redis, 0)).toBeNull();
+    await joinQueue(redis, soloType, solo, 1200, 0);
+    await joinQueue(redis, teamType, team, 1500, 0); // 300 apart, outside base band
+    expect(await findSoloVsTeam(redis, 0, soloType, teamType)).toBeNull();
   });
 
   it("pairs once the band widens enough with age", async () => {
-    await joinQueue(redis, SOLO_VS_TEAM_SOLO, solo, 1200, 0);
-    await joinQueue(redis, SOLO_VS_TEAM_TEAM, team, 1500, 0); // 300 apart
-    expect(await findSoloVsTeam(redis, 0)).toBeNull();
+    await joinQueue(redis, soloType, solo, 1200, 0);
+    await joinQueue(redis, teamType, team, 1500, 0); // 300 apart
+    expect(await findSoloVsTeam(redis, 0, soloType, teamType)).toBeNull();
     // 5s older -> band = 100 + 5*50 = 350 >= 300 apart.
-    expect(await findSoloVsTeam(redis, 5000)).not.toBeNull();
+    expect(await findSoloVsTeam(redis, 5000, soloType, teamType)).not.toBeNull();
   });
 });

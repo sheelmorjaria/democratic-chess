@@ -64,6 +64,33 @@ export function removeTeamMember(teamId: string, userId: string): Promise<void> 
   return request(`/teams/${teamId}/members/${userId}`, { method: "DELETE" }) as Promise<void>;
 }
 
+export interface UserLookup {
+  id: string;
+  username: string;
+}
+
+/** Resolve a username to a user id (for inviting by name). 404 if not found. */
+export function findUserByUsername(username: string): Promise<UserLookup> {
+  return request(`/users/lookup?username=${encodeURIComponent(username)}`) as Promise<UserLookup>;
+}
+
+export interface TeamMember {
+  userId: string;
+  role: "CAPTAIN" | "MEMBER";
+  user: { id: string; username: string };
+}
+
+export interface TeamDetail {
+  id: string;
+  name: string;
+  captainId: string;
+  members: TeamMember[];
+}
+
+export function getTeam(teamId: string): Promise<TeamDetail> {
+  return request(`/teams/${teamId}`) as Promise<TeamDetail>;
+}
+
 export interface MatchSummary {
   id: string;
   mode: "TEAM_VS_TEAM" | "SOLO_VS_TEAM";
