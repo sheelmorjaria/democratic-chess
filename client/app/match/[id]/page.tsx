@@ -20,6 +20,8 @@ interface MatchStart {
   youAreSolo: boolean;
   fen: string;
   moveWindowSec: number;
+  /** This member's current vote for the active turn (null if none). Survives refresh. */
+  myVote?: string | null;
 }
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -85,6 +87,7 @@ export default function MatchPage() {
       setFen(data.fen);
       setColor(data.youAre);
       setYouAreSolo(!!data.youAreSolo);
+      setMyVote(data.myVote ?? null);
       setLoading(false);
     };
     const onTurnStart = (data: { color: "white" | "black"; deadlineAt: string }) => {

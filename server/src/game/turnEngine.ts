@@ -192,6 +192,9 @@ export class TurnEngine {
     await addPresence(this.deps.redis, matchId, color, socket.data.userId);
     // A side rejoining cancels any pending forfeit from a momentary disconnect.
     this.clearForfeitTimer(matchId, color);
+    // Echo the voter's current choice for this turn so the client can restore
+    // its highlight across a reconnect/refresh (single-vote-per-turn is server-held).
+    const myVote = await getVoterChoice(this.deps.redis, matchId, match.turnNumber, socket.data.userId);
     socket.emit("match_start", {
       matchId,
       mode: match.mode,
@@ -199,6 +202,7 @@ export class TurnEngine {
       youAreSolo: isSoloSide(match, participant.teamColor),
       fen: match.fen,
       moveWindowSec: match.moveWindowSec,
+      myVote,
     });
   }
 
