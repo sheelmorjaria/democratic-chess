@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import * as api from "./api";
+import { resetSocket } from "./socket";
 
 interface CurrentUser {
   id: string;
@@ -46,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(persist(await api.login(email, password)));
     },
     logout() {
+      resetSocket();
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");

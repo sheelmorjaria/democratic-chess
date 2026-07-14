@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1
+#
+# DemocraticChess web client (Next.js App Router).
+# Build context MUST be the repo root (npm-workspaces monorepo).
+#
+# IMPORTANT: NEXT_PUBLIC_API_URL is inlined by `next build`, so it must be
+# present in the BUILD environment. CapRover does NOT pass app env vars into
+# the build (see caprover/caprover#343), so set the real server URL in the
+# `ARG` default below (it's a public value) BEFORE deploying — or override it
+# with `--build-arg NEXT_PUBLIC_API_URL=...` from a CI build.
+
+FROM node:20-bookworm-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/types/package.json packages/types/package.json
+COPY server/package.json server/package.json
+COPY client/package.json client/package.json
+RUN npm ci
+
+FROM deps AS build
+# >>> CHANGE THIS to your server's public CapRover URL (e.g. https://dc-server.root.example.com) <<<
+ARG NEXT_PUBLIC_API_URL=https://dc-server.CHANGE_ME.example.com
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY tsconfig.base.json ./
+COPY client client
+RUN npm --workspace client run build
+
+FROM node:20-bookworm-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY package.json package-lock.json ./
+COPY packages/types/package.json packages/types/package.json
+COPY server/package.json server/package.json
+COPY client/package.json client/package.json
+RUN npm ci --omit=dev
+COPY --from=build /app/client/.next client/.next
+
+WORKDIR /app/client
+EXPOSE 3000
+CMD ["npx", "next", "start", "-p", "3000"]

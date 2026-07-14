@@ -5,8 +5,13 @@ import { Header } from "./Header";
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
+      <a href="#dc-content" className="dc-skip-link">
+        Skip to content
+      </a>
       <Header />
-      <main className="dc-main">{children}</main>
+      <main id="dc-content" className="dc-main">
+        {children}
+      </main>
     </>
   );
 }

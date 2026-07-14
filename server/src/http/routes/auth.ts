@@ -15,6 +15,7 @@ import {
   findUserByEmail,
   findUserById,
 } from "../../db/repositories/users.js";
+import { acceptInvite, addMember, findPendingInvitesByEmail } from "../../db/repositories/teams.js";
 import { loginSchema, refreshSchema, registerSchema } from "../validate.js";
 
 function publicUser(user: { id: string; username: string; email: string }) {
@@ -36,6 +37,12 @@ export function createAuthRouter(db: PrismaClient): Router {
         email,
         passwordHash: await hashPassword(password),
       });
+      // Auto-consume any pending team invites for this email → join the teams.
+      const pending = await findPendingInvitesByEmail(db, email);
+      for (const invite of pending) {
+        await addMember(db, { teamId: invite.teamId, userId: user.id });
+        await acceptInvite(db, invite.token);
+      }
       const accessToken = await signAccessToken({ sub: user.id, username: user.username });
       const refreshToken = await signRefreshToken({ sub: user.id });
       res.status(201).json({ accessToken, refreshToken, user: publicUser(user) });

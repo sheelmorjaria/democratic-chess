@@ -1,30 +1,45 @@
-import type { AppServer } from "./io.js";
+import type { AppSocket, Envelope } from "./realtime.js";
+import type { RoomBus } from "./bus.js";
 import type { TurnEngine } from "../game/turnEngine.js";
-import { logger } from "../observability/logger.js";
+import { onCallJoin, onCallLeave, onRelaySignal } from "./voice.js";
 
-/** Binds the game socket events to the TurnEngine. Call after `initRuntime`. */
-export function registerGameHandlers(io: AppServer, engine: TurnEngine): void {
-  io.on("connection", (socket) => {
-    const log = logger.child({ socketId: socket.id, userId: socket.data.userId });
-    socket.on("join_match", (raw: unknown) => {
-      engine.onJoinMatch(socket, raw).catch((error) => log.error({ err: error, event: "join_match" }));
-    });
-    socket.on("propose_move", (raw: unknown) => {
-      engine.onProposeMove(socket, raw).catch((error) => log.error({ err: error, event: "propose_move" }));
-    });
-    socket.on("vote_move", (raw: unknown) => {
-      engine.onVoteMove(socket, raw).catch((error) => log.error({ err: error, event: "vote_move" }));
-    });
-    socket.on("execute_now", (raw: unknown) => {
-      engine.onExecuteNow(socket, raw).catch((error) => log.error({ err: error, event: "execute_now" }));
-    });
-    socket.on("send_chat_message", (raw: unknown) => {
-      engine.onSendChatMessage(socket, raw).catch((error) =>
-        log.error({ err: error, event: "send_chat_message" }),
-      );
-    });
-    socket.on("disconnect", () => {
-      engine.onDisconnect(socket).catch((error) => log.error({ err: error, event: "disconnect" }));
-    });
-  });
+/**
+ * Route one inbound envelope to the game engine or the voice-signaling layer.
+ * Called per WebSocket message by the uWS app.
+ */
+export function dispatchMessage(
+  engine: TurnEngine,
+  bus: RoomBus,
+  socket: AppSocket,
+  env: Envelope,
+): Promise<void> {
+  switch (env.t) {
+    case "join_match":
+      return engine.onJoinMatch(socket, env.d);
+    case "propose_move":
+      return engine.onProposeMove(socket, env.d);
+    case "vote_move":
+      return engine.onVoteMove(socket, env.d);
+    case "execute_now":
+      return engine.onExecuteNow(socket, env.d);
+    case "send_chat_message":
+      return engine.onSendChatMessage(socket, env.d);
+    case "webrtc_join":
+      onCallJoin(bus, socket, env.d);
+      return Promise.resolve();
+    case "webrtc_leave":
+      onCallLeave(bus, socket);
+      return Promise.resolve();
+    case "webrtc_offer":
+      onRelaySignal(bus, socket, "webrtc_offer", env.d);
+      return Promise.resolve();
+    case "webrtc_answer":
+      onRelaySignal(bus, socket, "webrtc_answer", env.d);
+      return Promise.resolve();
+    case "webrtc_ice":
+      onRelaySignal(bus, socket, "webrtc_ice", env.d);
+      return Promise.resolve();
+    default:
+      return Promise.resolve();
+  }
 }

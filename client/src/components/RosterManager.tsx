@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  addTeamMember,
-  findUserByUsername,
+  cancelTeamInvite,
   getTeam,
+  inviteMember,
+  listTeamInvites,
   removeTeamMember,
   type TeamDetail,
+  type TeamInviteView,
 } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
@@ -19,10 +21,11 @@ interface RosterManagerProps {
   teamId: string;
 }
 
-/** Captain-gated roster panel: list members, invite by username, remove. */
+/** Captain-gated roster panel: list members, invite by email, remove. */
 export default function RosterManager({ teamId }: RosterManagerProps) {
   const [team, setTeam] = useState<TeamDetail | null>(null);
-  const [username, setUsername] = useState("");
+  const [invites, setInvites] = useState<TeamInviteView[]>([]);
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,7 +38,13 @@ export default function RosterManager({ teamId }: RosterManagerProps) {
 
   const load = useCallback(async () => {
     try {
-      setTeam(await getTeam(teamId));
+      const [t, inv] = await Promise.all([
+        getTeam(teamId),
+        // Non-captains get 403 here; that's fine — just no invite list.
+        listTeamInvites(teamId).catch(() => ({ invites: [] as TeamInviteView[] })),
+      ]);
+      setTeam(t);
+      setInvites(inv.invites);
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed to load team");
     } finally {
@@ -49,20 +58,21 @@ export default function RosterManager({ teamId }: RosterManagerProps) {
     void load();
   }, [load]);
 
-  async function add(event: React.FormEvent) {
+  async function invite(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     setMsg(null);
-    const name = username.trim();
-    if (!name) return;
+    const addr = email.trim();
+    if (!addr) return;
     try {
-      const user = await findUserByUsername(name);
-      await addTeamMember(teamId, user.id);
-      setUsername("");
-      setMsg(`Added ${user.username}.`);
+      const res = await inviteMember(teamId, addr);
+      setEmail("");
+      if (res.status === "added") setMsg(`Added ${res.username ?? addr} to the team.`);
+      else if (res.status === "already_member") setMsg(`${res.username ?? addr} is already on the team.`);
+      else setMsg(`Invite sent to ${addr} — share the link below so they can join.`);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "failed to add member");
+      setError(e instanceof Error ? e.message : "failed to invite");
     }
   }
 
@@ -78,6 +88,26 @@ export default function RosterManager({ teamId }: RosterManagerProps) {
     }
   }
 
+  async function cancel(inviteId: string) {
+    setError(null);
+    setMsg(null);
+    try {
+      await cancelTeamInvite(teamId, inviteId);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "failed to cancel invite");
+    }
+  }
+
+  function copyLink(url: string) {
+    try {
+      void navigator.clipboard?.writeText(url);
+      setMsg("Invite link copied to clipboard.");
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+
   if (loading) {
     return (
       <div className="dc-row">
@@ -86,6 +116,8 @@ export default function RosterManager({ teamId }: RosterManagerProps) {
     );
   }
   if (!team) return <Banner tone="error">{error ?? "team not found"}</Banner>;
+
+  const pending = invites.filter((i) => i.status === "PENDING");
 
   return (
     <Card>
@@ -117,18 +149,62 @@ export default function RosterManager({ teamId }: RosterManagerProps) {
       </ul>
 
       {isCaptain ? (
-        <form onSubmit={add} className="dc-stack" style={{ marginTop: 12 }}>
-          <Field
-            label="Invite by username"
-            placeholder="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-          <Button type="submit" variant="primary">
-            Add member
-          </Button>
-        </form>
+        <>
+          <form onSubmit={invite} className="dc-stack" style={{ marginTop: 12 }}>
+            <Field
+              label="Invite by email"
+              type="email"
+              placeholder="teammate@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Button type="submit" variant="primary">
+              Send invite
+            </Button>
+            <p className="dc-muted" style={{ fontSize: 13 }}>
+              Registered users join instantly. Others get a shareable join link.
+            </p>
+          </form>
+
+          {pending.length > 0 && (
+            <div className="dc-stack" style={{ marginTop: 16 }}>
+              <span
+                className="dc-muted"
+                style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}
+              >
+                Pending invites
+              </span>
+              <ul className="dc-roster__list">
+                {pending.map((i) => (
+                  <li key={i.id} className="dc-roster__row">
+                    <span className="dc-muted" style={{ fontSize: 13 }}>
+                      {i.email}
+                    </span>
+                    <span className="dc-row">
+                      {i.inviteUrl && (
+                        <button
+                          type="button"
+                          className="dc-btn dc-btn--ghost dc-btn--sm"
+                          onClick={() => i.inviteUrl && copyLink(i.inviteUrl)}
+                        >
+                          Copy link
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="dc-btn dc-btn--ghost dc-btn--sm"
+                        onClick={() => cancel(i.id)}
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       ) : (
         <p className="dc-muted" style={{ fontSize: 13, marginTop: 8 }}>
           Only the captain can manage the roster.

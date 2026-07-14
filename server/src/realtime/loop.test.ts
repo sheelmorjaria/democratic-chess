@@ -1,16 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import http from "node:http";
-import type { AddressInfo } from "node:net";
-import { io as ioc, type Socket } from "socket.io-client";
+import { WebSocket } from "ws";
 import type { PrismaClient } from "@prisma/client";
 import type { Redis } from "ioredis";
 import { getPrisma } from "../db/prisma.js";
 import { getRedis } from "../db/redis.js";
-import { createRealtimeServer, type AppServer } from "./io.js";
-import { registerGameHandlers } from "./handlers.js";
+import { createRealtimeApp, type RealtimeApp } from "./uws.js";
 import { TurnEngine } from "../game/turnEngine.js";
 import { signAccessToken } from "../auth/jwt.js";
 import { createTeamMatch } from "../game/matchService.js";
+import type { Envelope } from "./realtime.js";
 
 const db: PrismaClient = getPrisma();
 const redis: Redis = getRedis();
@@ -70,88 +68,133 @@ async function cleanup(f: Fixture): Promise<void> {
   await db.user.deleteMany({ where: { id: { in: f.users } } });
 }
 
-let httpServer: http.Server;
-let io: AppServer;
+/** Minimal WebSocket client speaking the `{t,d}` envelope. */
+class TestClient {
+  private readonly ws: WebSocket;
+  private readonly waiters = new Map<string, (data: unknown) => void>();
+
+  private constructor(ws: WebSocket) {
+    this.ws = ws;
+    this.ws.on("message", (data: Buffer, isBinary: boolean) => {
+      if (isBinary) return;
+      let env: Envelope;
+      try {
+        env = JSON.parse(data.toString()) as Envelope;
+      } catch {
+        return;
+      }
+      const cb = this.waiters.get(env.t);
+      if (cb) {
+        this.waiters.delete(env.t);
+        cb(env.d);
+      }
+    });
+  }
+
+  static connect(url: string, ms = 2000): Promise<TestClient> {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(url);
+      const timer = setTimeout(() => reject(new Error("connect timeout")), ms);
+      ws.on("open", () => {
+        clearTimeout(timer);
+        resolve(new TestClient(ws));
+      });
+      ws.on("error", () => {
+        clearTimeout(timer);
+        reject(new Error("connect error"));
+      });
+    });
+  }
+
+  emit(event: string, data: unknown): void {
+    this.ws.send(JSON.stringify({ t: event, d: data }));
+  }
+
+  waitFor(event: string, ms = 2000): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(`timeout waiting for ${event}`)), ms);
+      this.waiters.set(event, (data) => {
+        clearTimeout(timer);
+        resolve(data);
+      });
+    });
+  }
+
+  observedWithin(event: string, ms = 400): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      let done = false;
+      const timer = setTimeout(() => {
+        if (!done) resolve(false);
+      }, ms);
+      this.waiters.set(event, () => {
+        if (!done) {
+          done = true;
+          clearTimeout(timer);
+          resolve(true);
+        }
+      });
+    });
+  }
+
+  disconnect(): void {
+    this.ws.close();
+  }
+}
+
+async function connect(player: Player, port: number): Promise<TestClient> {
+  const token = await signAccessToken({ sub: player.id, username: player.username });
+  return TestClient.connect(`ws://localhost:${port}/?token=${token}`);
+}
+
+let rt: RealtimeApp;
 let engine: TurnEngine;
 let port = 0;
 let fx: Fixture;
 
 beforeEach(async () => {
-  httpServer = http.createServer();
-  io = createRealtimeServer({ httpServer, redis, clientOrigin: "*" });
-  engine = new TurnEngine({ db, redis, io, forfeitGraceMs: 100 });
-  registerGameHandlers(io, engine);
-  await new Promise<void>((resolve) => {
-    httpServer.listen(0, () => {
-      port = (httpServer.address() as AddressInfo).port;
-      resolve();
-    });
+  rt = createRealtimeApp({
+    redis,
+    internalPort: 0,
+    createEngine: (io) => new TurnEngine({ db, redis, io, forfeitGraceMs: 100 }),
   });
+  port = (await rt.listen(0)).port;
+  engine = rt.engine;
   fx = await seed();
 });
 
 afterEach(async () => {
   engine.dispose();
-  await new Promise<void>((resolve) => io.close(() => resolve()));
-  await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  await rt.close();
   await cleanup(fx);
 });
 
-function waitFor(socket: Socket, event: string, ms = 2000): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`timeout waiting for ${event}`)), ms);
-    socket.once(event, (data: unknown) => {
-      clearTimeout(timer);
-      resolve(data);
-    });
-  });
-}
-
-function observedWithin(socket: Socket, event: string, ms = 400): Promise<boolean> {
-  return new Promise<boolean>((resolve) => {
-    const handler = () => resolve(true);
-    socket.once(event, handler);
-    setTimeout(() => {
-      socket.off(event, handler);
-      resolve(false);
-    }, ms);
-  });
-}
-
-async function connect(player: Player): Promise<Socket> {
-  const token = await signAccessToken({ sub: player.id, username: player.username });
-  const socket = ioc(`http://localhost:${port}`, { auth: { token }, transports: ["websocket"] });
-  if (!socket.connected) await waitFor(socket, "connect");
-  return socket;
-}
-
 describe("US1 realtime loop (socket-level e2e)", () => {
   it("runs propose -> vote -> execute with opponent isolation", async () => {
-    const white = await connect(fx.white);
-    const black = await connect(fx.black);
+    const white = await connect(fx.white, port);
+    const black = await connect(fx.black, port);
 
     white.emit("join_match", { matchId: fx.matchId });
     black.emit("join_match", { matchId: fx.matchId });
-    await waitFor(white, "match_start");
-    await waitFor(black, "match_start");
+    await white.waitFor("match_start");
+    await black.waitFor("match_start");
 
     white.emit("propose_move", { matchId: fx.matchId, from: "e2", to: "e4" });
 
-    const proposal = (await waitFor(white, "new_proposal")) as { san: string };
+    const proposal = (await white.waitFor("new_proposal")) as { san: string };
     expect(proposal.san).toBe("e4");
     // Constitution principle IV: opponents never see proposals.
-    expect(await observedWithin(black, "new_proposal")).toBe(false);
+    expect(await black.observedWithin("new_proposal")).toBe(false);
 
     white.emit("vote_move", { matchId: fx.matchId, moveKey: "e2:e4:-" });
-    const vote = (await waitFor(white, "vote_update")) as {
+    const vote = (await white.waitFor("vote_update")) as {
       tallies: { moveKey: string; count: number }[];
     };
     expect(vote.tallies.find((t) => t.moveKey === "e2:e4:-")?.count).toBe(1);
 
     // Window-expiry path: arm listeners first — resolveTurn runs in-process and
     // emits synchronously, so the waiter must be registered before the call.
-    const whiteMoveP = waitFor(white, "move_executed");
-    const blackMoveP = waitFor(black, "move_executed");
+    const whiteMoveP = white.waitFor("move_executed");
+    const blackMoveP = black.waitFor("move_executed");
     await engine.resolveTurn(fx.matchId);
 
     const whiteMove = (await whiteMoveP) as { fen: string; san: string };
@@ -164,9 +207,9 @@ describe("US1 realtime loop (socket-level e2e)", () => {
   }, 20000);
 
   it("forfeits a side when its last member disconnects (FR-009)", async () => {
-    const white = await connect(fx.white);
+    const white = await connect(fx.white, port);
     white.emit("join_match", { matchId: fx.matchId });
-    await waitFor(white, "match_start");
+    await white.waitFor("match_start");
     white.disconnect();
     await new Promise((resolve) => setTimeout(resolve, 600)); // let disconnect + forfeit settle
 

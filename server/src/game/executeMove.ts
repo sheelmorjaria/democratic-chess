@@ -1,16 +1,15 @@
 import type { PrismaClient } from "@prisma/client";
 import type { Redis } from "ioredis";
-import type { Server } from "socket.io";
 import { ChessEngine, type GameStatus } from "./engine.js";
 import { clearTurn, getProposals } from "../voting/ephemeral.js";
-import { matchRoom } from "../realtime/io.js";
+import { matchRoom, type Realtime } from "../realtime/io.js";
 import { endMatch } from "./matchEnd.js";
 import { moveKey as makeMoveKey } from "@democratic-chess/types";
 
 export interface ExecuteDeps {
   db: PrismaClient;
   redis: Redis;
-  io?: Server;
+  io?: Realtime;
 }
 
 export interface ExecutedMove {

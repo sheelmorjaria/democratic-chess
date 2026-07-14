@@ -27,5 +27,29 @@ services:
       timeout: 3s
       retries: 10
 
+  # TURN relay for the P2P team-voice mesh. Optional — opt in with
+  # `docker compose --profile turn up`. STUN-only works for same-network peers
+  # (~85%); start coturn for users behind symmetric/carrier-grade NAT. Set
+  # TURN_USER / TURN_PASS / TURN_URL on the API server too (they must match).
+  # For real cross-network use, also map the UDP relay range (49152-49252) or
+  # switch to `network_mode: host` and set `external-ip=<public-ip>`.
+  coturn:
+    image: coturn/coturn:latest
+    container_name: democratic-chess-coturn
+    profiles: ["turn"]
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+    command:
+      - "--listening-port=3478"
+      - "--fingerprint"
+      - "--realm=${TURN_REALM:-democraticchess.local}"
+      - "--user=${TURN_USER:-dc}:${TURN_PASS:-dcturn}"
+      - "--min-port=49152"
+      - "--max-port=49252"
+      - "--no-cli"
+      - "--no-loopback-peers"
+      - "--no-multicast-peers"
+
 volumes:
   pgdata:

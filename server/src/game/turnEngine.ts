@@ -1,6 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
 import type { Redis } from "ioredis";
-import type { Server } from "socket.io";
 import { moveKey as makeMoveKey } from "@democratic-chess/types";
 import {
   addPresence,
@@ -20,7 +19,7 @@ import { ChessEngine } from "./engine.js";
 import { applyMove, executeMove } from "./executeMove.js";
 import { endMatch } from "./matchEnd.js";
 import { isSoloSide } from "./soloTurn.js";
-import { colorRoom, joinMatchRooms, matchRoom, type AppSocket } from "../realtime/io.js";
+import { colorRoom, joinMatchRooms, matchRoom, type AppSocket, type Realtime } from "../realtime/io.js";
 import { logger } from "../observability/logger.js";
 import { validateProposeMove, validateSendChatMessage, validateVoteMove } from "../realtime/validate.js";
 
@@ -75,7 +74,7 @@ export function weightTallies(tallies: Tally[], captainMoveKey: string): Tally[]
 export interface TurnEngineDeps {
   db: PrismaClient;
   redis: Redis;
-  io: Server;
+  io: Realtime;
   /** Reconnection grace before a side at zero presence forfeits (FR-009). */
   forfeitGraceMs?: number;
 }

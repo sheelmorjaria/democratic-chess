@@ -2,7 +2,7 @@ import cors from "cors";
 import express, { type ErrorRequestHandler, type Express } from "express";
 import type { PrismaClient } from "@prisma/client";
 import type { Redis } from "ioredis";
-import type { Server } from "socket.io";
+import type { Realtime } from "../realtime/realtime.js";
 import { ZodError } from "zod";
 import { createAuthRouter } from "./routes/auth.js";
 import { createLeaderboardRouter } from "./routes/leaderboard.js";
@@ -10,13 +10,14 @@ import { createMatchesRouter } from "./routes/matches.js";
 import { createQueueRouter } from "./routes/queue.js";
 import { createTeamsRouter } from "./routes/teams.js";
 import { createUsersRouter } from "./routes/users.js";
+import { createWebRtcRouter } from "./routes/webrtc.js";
 import { requestContext, requestLogger, type ContextualRequest } from "../observability/http.js";
 import { logger } from "../observability/logger.js";
 
 export interface AppDeps {
   db: PrismaClient;
   redis?: Redis;
-  io?: Server;
+  io?: Realtime;
   clientOrigin?: string;
 }
 
@@ -43,6 +44,7 @@ export function createApp(deps: AppDeps): Express {
   app.use("/matches", createMatchesRouter(deps.db));
   app.use("/leaderboard", createLeaderboardRouter(deps.db));
   app.use("/users", createUsersRouter(deps.db));
+  app.use("/webrtc", createWebRtcRouter());
   if (deps.redis && deps.io) {
     app.use("/queue", createQueueRouter(deps.db, deps.redis, deps.io));
   }

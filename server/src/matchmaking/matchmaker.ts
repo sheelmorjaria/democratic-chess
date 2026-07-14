@@ -1,9 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 import type { Redis } from "ioredis";
-import type { Server } from "socket.io";
 import { createSoloMatch, createTeamMatch } from "../game/matchService.js";
 import { getRuntime } from "../game/runtime.js";
-import { userRoom } from "../realtime/io.js";
+import { userRoom, type Realtime } from "../realtime/io.js";
 import { logger } from "../observability/logger.js";
 import { INITIAL_RATING } from "./rating.js";
 import {
@@ -25,7 +24,7 @@ import {
 export interface MatchmakerDeps {
   db: PrismaClient;
   redis: Redis;
-  io: Server;
+  io: Realtime;
 }
 
 /** SC-007 target: a queued match starts within ~2 min of a full lobby forming. */

@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1
+#
+# DemocraticChess API + realtime server (Node/Express + Socket.io + Prisma).
+# Build context MUST be the repo root (npm-workspaces monorepo) so it can build
+# the shared `packages/types` workspace and COPY the Prisma schema/migrations.
+#
+# Runs `prisma migrate deploy` on container start, then `node server/dist/index.js`.
+# The server listens on $PORT (default 3001) — set the CapRover container port to match.
+
+FROM node:20-bookworm-slim AS deps
+WORKDIR /app
+# All workspace package.json files must exist for `npm ci` to resolve the tree.
+COPY package.json package-lock.json ./
+COPY packages/types/package.json packages/types/package.json
+COPY server/package.json server/package.json
+COPY client/package.json client/package.json
+RUN npm ci
+
+FROM deps AS build
+COPY tsconfig.base.json ./
+COPY packages/types packages/types
+COPY server server
+RUN npm --workspace @democratic-chess/types run build
+RUN npx prisma generate --schema=server/prisma/schema.prisma
+RUN npm --workspace server run build
+
+FROM node:20-bookworm-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+# Prisma's query engine needs openssl; ca-certificates for outbound TLS.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+COPY packages/types/package.json packages/types/package.json
+COPY server/package.json server/package.json
+COPY client/package.json client/package.json
+RUN npm ci --omit=dev
+# Prisma CLI (devDep) is needed for `generate` and `migrate deploy` at runtime.
+COPY server/prisma server/prisma
+RUN npm i --no-save prisma@5 \
+    && npx prisma generate --schema=server/prisma/schema.prisma
+COPY --from=build /app/packages/types/dist packages/types/dist
+COPY --from=build /app/server/dist server/dist
+
+EXPOSE 3001
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=server/prisma/schema.prisma && node server/dist/index.js"]

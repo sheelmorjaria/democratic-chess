@@ -48,3 +48,65 @@ export async function removeMember(
 ): Promise<void> {
   await db.teamMembership.delete({ where: { teamId_userId: { teamId, userId } } });
 }
+
+// ---- team invites (FR-014 roster, email-based) ----
+
+/** Teams a user belongs to, with their role in each (for the roster selector). */
+export async function listTeamsForUser(db: PrismaClient, userId: string) {
+  return db.team.findMany({
+    where: { members: { some: { userId } } },
+    select: {
+      id: true,
+      name: true,
+      captainId: true,
+      members: { where: { userId }, select: { role: true } },
+    },
+  });
+}
+
+/** Create or reactivate (re-invite after cancel) a PENDING invite for an email. */
+export async function createInvite(
+  db: PrismaClient,
+  args: { teamId: string; email: string; invitedBy: string },
+) {
+  return db.teamInvite.upsert({
+    where: { teamId_email: { teamId: args.teamId, email: args.email } },
+    create: { teamId: args.teamId, email: args.email, invitedBy: args.invitedBy },
+    update: { status: "PENDING", invitedBy: args.invitedBy },
+  });
+}
+
+export async function listInvitesForTeam(db: PrismaClient, teamId: string) {
+  return db.teamInvite.findMany({ where: { teamId }, orderBy: { createdAt: "desc" } });
+}
+
+export async function findInviteByToken(db: PrismaClient, token: string) {
+  return db.teamInvite.findUnique({ where: { token } });
+}
+
+export async function findPendingInvitesByEmail(db: PrismaClient, email: string) {
+  return db.teamInvite.findMany({
+    where: { email: { equals: email, mode: "insensitive" }, status: "PENDING" },
+    include: { team: { select: { id: true, name: true } } },
+  });
+}
+
+export async function acceptInvite(db: PrismaClient, token: string) {
+  return db.teamInvite.update({ where: { token }, data: { status: "ACCEPTED" } });
+}
+
+export async function cancelInvite(db: PrismaClient, id: string) {
+  return db.teamInvite.update({ where: { id }, data: { status: "CANCELLED" } });
+}
+
+/** Drop any PENDING invite for an email once that user is a direct member. */
+export async function cancelInvitesForEmail(
+  db: PrismaClient,
+  teamId: string,
+  email: string,
+): Promise<void> {
+  await db.teamInvite.updateMany({
+    where: { teamId, email: { equals: email, mode: "insensitive" }, status: "PENDING" },
+    data: { status: "CANCELLED" },
+  });
+}

@@ -138,6 +138,46 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 
 ---
 
+## Phase 8: UI Redesign & Theming (Post-MVP)
+
+**Purpose**: Replace the inline-style UI with a token-driven design system and ship four runtime-switchable themes; add per-theme pieces, board interaction hints, and an accessibility pass. Presentational only — **no changes to business logic, REST, or Socket.IO payloads.**
+
+**Independent Test**: Switching the header swatch recolors every screen (and the board) instantly; the choice persists across reload; drag **and** click-to-move both propose moves; keyboard/AT users get a skip link, live status, and labeled controls.
+
+- [x] T046 [P] Token design system: CSS custom properties + four `[data-theme]` blocks (Tournament / Light / Warm / Neon) + `.dc-*` component classes in `client/app/globals.css`
+- [x] T047 [P] Theme runtime: `ThemeId` / `THEMES` token map in `client/src/lib/themes.ts`; `ThemeProvider` + `useTheme()` (localStorage + `prefers-color-scheme`, applies `data-theme`) in `client/src/lib/theme.tsx`
+- [x] T048 [P] UI primitives (Button, Field, Card, Badge, Banner, Spinner, EmptyState, ThemeSwatches, Header, AppShell) in `client/src/components/ui/`
+- [x] T049 Wire app shell: no-flash bootstrap `<script>` + `AuthProvider › ThemeProvider › AppShell` in `client/app/layout.tsx`
+- [x] T050 [P] Rebuild all five screens on the design system (home, login, lobby, leaderboard, match) in `client/app/**/page.tsx`; refactor `VotingSidebar` / `TeamChat` / `RosterManager` onto tokens (logic unchanged)
+- [x] T051 Theme the board: `useTheme().tokens` → react-chessboard custom light/dark/board styles in `client/src/components/BoardCanvas.tsx` (keep ssr:false loader, `ChessboardDnDProvider`, explicit `boardWidth`, `touch-action: none`)
+- [x] T052 Per-theme piece sets (Unicode silhouettes via `customPieces`) + legal-move dots / king-in-check highlight + click-to-move (`chess.js`-driven, alongside drag) in `client/src/components/BoardCanvas.tsx`
+- [x] T053 [P] Accessibility: skip-to-content link + `#dc-content`, `aria-live` status/error regions, board `aria-label`, visually-hidden login heading, focus-visible coverage in `client/app/globals.css`, `client/src/components/ui/{AppShell,Banner}.tsx`, and pages
+- [x] T054 Figma source-of-truth design file (Spec / Components / Screens / Themes pages) at https://www.figma.com/design/2c7XMot7lcnlAaitdcgVZw
+- [x] T055 Verify client build: `tsc --noEmit` + `next build` green across all 7 routes
+
+**Checkpoint**: Multi-theme UI live; typecheck + build green; no regression to the realtime loop (all socket wiring preserved).
+
+---
+
+## Phase 9: Realtime Swap (uWebSockets.js) + P2P Voice + Roster Invites (Post-MVP)
+
+**Purpose**: Replace Socket.io with uWebSockets.js, add P2P WebRTC mesh team voice with coturn TURN, and email-based roster invites. Presentational/transport changes only — game logic (engine, voting, turn timer, matchmaking, ELO) unchanged.
+
+**Independent Test**: two accounts in a team match → board + voting work over raw WS; the captain invites a teammate by email (added instantly, or shareable link → auto-join on register); both join the team call and hear each other (P2P mesh).
+
+- [x] T056 [P] `TeamInvite` model + `InviteStatus` enum + migration in `server/prisma/schema.prisma`
+- [x] T057 [P] Invite endpoints + register auto-consume: `GET /teams/mine`, invite/list/cancel/accept in `server/src/http/routes/teams.ts`; repos in `server/src/db/repositories/teams.ts`; register consumes pending invites in `server/src/http/routes/auth.ts`
+- [x] T058 [P] Client invite UI: "My teams" selector in `client/app/lobby/page.tsx`; email invite + pending list in `client/src/components/RosterManager.tsx`; `client/app/join/page.tsx`; login `?next=` round-trip; `client/src/lib/api.ts` fns
+- [x] T059 [P] Socket.io → uWebSockets.js: `server/src/realtime/{realtime,bus,uws,handlers,voice}.ts`; drop-in `Realtime`/`AppSocket` interfaces; emit-primitive swap across `turnEngine`/`executeMove`/`matchEnd`/`matchmaker`; tests ported to a raw-WS client; deps (add `uWebSockets.js` v20.44.0 + `ws`; remove `socket.io`/`@socket.io/redis-adapter`/`socket.io-client`)
+- [x] T060 Client on native `WebSocket`: rewrite `client/src/lib/socket.ts` (envelope, reconnect/backoff, on-open re-`join_match`); `logout()` tears the socket down
+- [x] T061 [P] TURN + ICE: `GET /webrtc/ice` (STUN always + TURN when configured) in `server/src/http/routes/webrtc.ts`; coturn compose service (`--profile turn`); `TURN_*` env in `server/.env.example`
+- [x] T062 [P] P2P WebRTC mesh voice: signaling relays (`webrtc_join/leave/offer/answer/ice`, in-memory call registry) in `server/src/realtime/voice.ts`; `client/src/lib/webrtc.ts` mesh manager ("lower-id-offers" glare rule, mute, device select, teardown); `client/src/components/CallBar.tsx`; mounted in the match for team (non-solo) mode
+- [x] T063 Verify: server `tsc` + `vitest` (44 green, incl. realtime loop + opponent-isolation + forfeit over uWS); client `tsc` + `next build`; `/webrtc/ice` + invite HTTP smokes (9 steps, all pass)
+
+**Checkpoint**: Raw-WS realtime + $0 P2P voice + email invites live; 44 tests green; both clients build.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -145,6 +185,7 @@ Monorepo (npm workspaces) — NOT the template's single-project layout:
 - **Foundational (Phase 2)**: Depends on Setup; **BLOCKS all user stories**.
 - **User Stories (Phases 3–6)**: All depend on Foundational. US2/US3/US4 layer onto US1 (the core loop).
 - **Polish (Phase 7)**: Depends on the user stories being complete.
+- **UI Redesign (Phase 8)**: Post-MVP; builds on the finished client surface (Phases 3–7). Client-only — no API/Socket.IO changes.
 
 ### User Story Dependencies
 - **US1 (P1)**: Starts after Foundational. No other-story dependency.
@@ -196,6 +237,8 @@ Recommendation: build **US1 first** (it is independently shippable and proves th
 
 ## Notes
 
+- **Phase 8 (UI redesign) was added after the spec's original T001–T045 completion** — it is presentational plus a theme runtime; no changes to business logic, REST, or Socket.IO payloads. Per-theme pieces, click-to-move/highlights, and the a11y pass are T052/T053.
+- **Phase 9 (uWebSockets.js swap + P2P voice + invites) is also post-MVP.** The realtime transport changed (Socket.io → uWebSockets.js; raw-WS `{t,d}` envelope; JWT at `?token=`), but every event/room/payload and the color-room isolation + forfeit invariants are preserved (44 tests green). uWebSockets.js is pinned to **v20.44.0** because the current line dropped Node 20 (the project runs Node 20).
 - Tasks are immediately executable; each is specific enough to complete without extra context.
 - Commit after each task or logical group; stop at any checkpoint to validate a story independently.
 - Voice chat is **Phase 3 (post-MVP)** — no voice tasks here; a future spec will add LiveKit integration.

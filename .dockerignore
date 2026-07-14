@@ -1,0 +1,16 @@
+# Keep Docker build contexts lean for both the server and client images.
+**/node_modules
+**/dist
+**/.next
+.git
+.github
+.specify
+specs
+docs
+coverage
+**/*.log
+**/.env.local
+**/.env.*.local
+.vscode
+.idea
+.DS_Store

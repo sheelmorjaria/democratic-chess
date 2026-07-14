@@ -25,7 +25,11 @@ export default function LoginPage() {
     try {
       if (mode === "register") await register(username, email, password);
       else await login(email, password);
-      router.push("/lobby");
+      const next =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("next")
+          : null;
+      router.push(next ?? "/lobby");
     } catch (e) {
       setError(e instanceof Error ? e.message : "auth failed");
     } finally {
@@ -35,6 +39,7 @@ export default function LoginPage() {
 
   return (
     <div style={{ maxWidth: 400, margin: "40px auto 0" }}>
+      <h1 className="dc-uvh">{mode === "login" ? "Log in" : "Register"}</h1>
       <Card>
         <div className="dc-segmented" style={{ marginBottom: 20 }}>
           <button

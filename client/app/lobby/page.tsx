@@ -11,6 +11,8 @@ import {
   joinQueueSolo,
   joinQueueTeam,
   leaveQueue,
+  listMyTeams,
+  type MyTeam,
   type QueueStatus,
 } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
@@ -19,6 +21,7 @@ import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Banner } from "@/components/ui/Banner";
+import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 
 export default function LobbyPage() {
@@ -28,15 +31,33 @@ export default function LobbyPage() {
   const [whiteId, setWhiteId] = useState("");
   const [blackId, setBlackId] = useState("");
   const [queueTeamId, setQueueTeamId] = useState("");
-  const [rosterTeamId, setRosterTeamId] = useState("");
   const [activeRosterId, setActiveRosterId] = useState<string | null>(null);
+  const [myTeams, setMyTeams] = useState<MyTeam[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [queue, setQueue] = useState<QueueStatus>({ state: "idle", estimatedWaitSec: null });
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (ready && !user) router.replace("/login");
   }, [ready, user, router]);
+
+  async function loadTeams() {
+    setTeamsLoading(true);
+    try {
+      setMyTeams(await listMyTeams());
+    } catch {
+      /* non-fatal — selector just shows empty */
+    } finally {
+      setTeamsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (ready && user) void loadTeams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, user]);
 
   // Instant match-start push from the queue; polling is the reliable fallback.
   useEffect(() => {
@@ -81,10 +102,12 @@ export default function LobbyPage() {
   async function makeTeam(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    setNotice(null);
     try {
       const team = await createTeam(teamName);
-      alert(`Team created: ${team.name} (${team.id})`);
       setTeamName("");
+      setNotice(`Team “${team.name}” created — it's now in your teams list below.`);
+      await loadTeams();
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed");
     }
@@ -186,13 +209,22 @@ export default function LobbyPage() {
                 Queue as solo player
               </Button>
               <form onSubmit={queueTeam} className="dc-stack">
-                <Field
-                  label="Your team id"
-                  placeholder="team_…"
-                  value={queueTeamId}
-                  onChange={(e) => setQueueTeamId(e.target.value)}
-                  required
-                />
+                <div className="dc-field">
+                  <label>Your team</label>
+                  <select
+                    className="dc-input"
+                    value={queueTeamId}
+                    onChange={(e) => setQueueTeamId(e.target.value)}
+                    required
+                  >
+                    <option value="">Select a team…</option>
+                    {myTeams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <Button type="submit" variant="secondary">
                   Queue as team (captain)
                 </Button>
@@ -224,32 +256,59 @@ export default function LobbyPage() {
         </Card>
 
         <Card title="Manage roster">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setActiveRosterId(rosterTeamId.trim() || null);
-            }}
-            className="dc-stack"
-          >
-            <Field
-              label="Your team id"
-              placeholder="team_…"
-              value={rosterTeamId}
-              onChange={(e) => setRosterTeamId(e.target.value)}
-              required
-            />
-            <Button type="submit" variant="secondary">
-              Load roster
-            </Button>
-          </form>
-          {activeRosterId && (
-            <div style={{ marginTop: 16 }}>
-              <RosterManager teamId={activeRosterId} />
+          {teamsLoading ? (
+            <div className="dc-row">
+              <Spinner /> Loading your teams…
             </div>
+          ) : myTeams.length === 0 ? (
+            <p className="dc-muted" style={{ fontSize: 13 }}>
+              You&apos;re not on a team yet — create one above, or accept an invite.
+            </p>
+          ) : (
+            <ul className="dc-roster__list">
+              {myTeams.map((t) => {
+                const active = t.id === activeRosterId;
+                return (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      className="dc-roster__row"
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        background: active ? "var(--accent-soft)" : undefined,
+                        borderColor: active ? "var(--accent)" : undefined,
+                      }}
+                      onClick={() => setActiveRosterId(t.id)}
+                    >
+                      <span className="dc-row">
+                        {t.name}
+                        {t.captainId === user.id && <Badge tone="accent">captain</Badge>}
+                      </span>
+                      <span className="dc-muted" style={{ fontSize: 12 }}>
+                        {t.role.toLowerCase()}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </Card>
       </div>
 
+      {activeRosterId && (
+        <div style={{ marginTop: 20 }}>
+          <RosterManager teamId={activeRosterId} />
+        </div>
+      )}
+
+      {notice && (
+        <div style={{ marginTop: 16 }}>
+          <Banner tone="success">{notice}</Banner>
+        </div>
+      )}
       {error && (
         <div style={{ marginTop: 16 }}>
           <Banner tone="error">{error}</Banner>

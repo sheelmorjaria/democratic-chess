@@ -43,6 +43,12 @@ enum RatingSubjectType {
   SOLO
 }
 
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  CANCELLED
+}
+
 model User {
   id           String              @id @default(uuid())
   username     String              @unique
@@ -67,6 +73,7 @@ model Team {
   createdAt DateTime @default(now())
 
   members      TeamMembership[]
+  invites      TeamInvite[]
   rating       Rating?         @relation("TeamRating")
   whiteMatches Match[]         @relation("WhiteTeam")
   blackMatches Match[]         @relation("BlackTeam")
@@ -85,6 +92,26 @@ model TeamMembership {
 
   @@unique([teamId, userId])
   @@index([userId])
+}
+
+// A captain's email invite (FR-014 roster). If the invitee is already a user,
+// they're added directly; otherwise a PENDING invite is stored with a token and
+// the captain gets a shareable link. The invite is auto-consumed when someone
+// registers/logs in with the matching email.
+model TeamInvite {
+  id        String       @id @default(uuid())
+  teamId    String
+  email     String
+  token     String       @unique @default(uuid())
+  status    InviteStatus @default(PENDING)
+  invitedBy String
+  createdAt DateTime     @default(now())
+
+  team      Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, email])
+  @@index([email])
+  @@index([teamId, status])
 }
 
 model Match {

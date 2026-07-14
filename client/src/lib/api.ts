@@ -91,6 +91,65 @@ export function getTeam(teamId: string): Promise<TeamDetail> {
   return request(`/teams/${teamId}`) as Promise<TeamDetail>;
 }
 
+// ---- team invites (email-based) ----
+
+export interface MyTeam {
+  id: string;
+  name: string;
+  captainId: string;
+  role: "CAPTAIN" | "MEMBER";
+}
+
+/** Teams the caller belongs to (drives the roster selector). */
+export function listMyTeams(): Promise<MyTeam[]> {
+  return request("/teams/mine") as Promise<MyTeam[]>;
+}
+
+export interface InviteResult {
+  status: "added" | "already_member" | "invited";
+  email: string;
+  username?: string;
+  inviteUrl?: string;
+}
+
+/** Invite by email: adds a registered user immediately, else creates a pending invite + link. */
+export function inviteMember(teamId: string, email: string): Promise<InviteResult> {
+  return request(`/teams/${teamId}/invites`, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  }) as Promise<InviteResult>;
+}
+
+export interface TeamInviteView {
+  id: string;
+  email: string;
+  status: "PENDING" | "ACCEPTED" | "CANCELLED";
+  createdAt: string;
+  inviteUrl?: string;
+}
+
+export function listTeamInvites(teamId: string): Promise<{ invites: TeamInviteView[] }> {
+  return request(`/teams/${teamId}/invites`) as Promise<{ invites: TeamInviteView[] }>;
+}
+
+export function cancelTeamInvite(teamId: string, inviteId: string): Promise<void> {
+  return request(`/teams/${teamId}/invites/${inviteId}`, { method: "DELETE" }) as Promise<void>;
+}
+
+/** Accept a shareable invite link (logged in; email must match). */
+export function acceptInvite(token: string): Promise<{ status: string; teamId: string }> {
+  return request(`/teams/invites/${token}/accept`, { method: "POST" }) as Promise<{
+    status: string;
+    teamId: string;
+  }>;
+}
+
+// ---- WebRTC team voice (P2P mesh) ----
+
+export function getIceServers(): Promise<{ iceServers: RTCIceServer[] }> {
+  return request("/webrtc/ice") as Promise<{ iceServers: RTCIceServer[] }>;
+}
+
 export interface MatchSummary {
   id: string;
   mode: "TEAM_VS_TEAM" | "SOLO_VS_TEAM";

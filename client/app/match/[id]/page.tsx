@@ -13,6 +13,7 @@ import { getMatch } from "@/lib/api";
 import Board from "@/components/Board";
 import VotingSidebar, { type ProposalView } from "@/components/VotingSidebar";
 import TeamChat, { type ChatMessage } from "@/components/TeamChat";
+import CallBar from "@/components/CallBar";
 import { Banner } from "@/components/ui/Banner";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -195,7 +196,7 @@ export default function MatchPage() {
       <div className="dc-status">
         <div className="dc-row" style={{ flexWrap: "wrap" }}>
           <h1 className="dc-pagehead__title">Match {matchId.slice(0, 8)}…</h1>
-          <span className="dc-turn-pill">
+          <span className="dc-turn-pill" aria-live="polite">
             <span className="dc-turn-pill__dot" />
             {turnColor ? `${turnColor} to move` : "waiting"}
           </span>
@@ -215,6 +216,12 @@ export default function MatchPage() {
       {error && (
         <div style={{ margin: "12px 0" }}>
           <Banner tone="error">{error}</Banner>
+        </div>
+      )}
+
+      {!youAreSolo && (
+        <div style={{ marginBottom: 16 }}>
+          <CallBar matchId={matchId} color={color} />
         </div>
       )}
 

@@ -1,11 +1,10 @@
 import type { PrismaClient, MatchWinner, TeamColor } from "@prisma/client";
-import type { Server } from "socket.io";
 import { applyElo, type EloSide } from "../matchmaking/rating.js";
-import { matchRoom } from "../realtime/io.js";
+import { matchRoom, type Realtime } from "../realtime/io.js";
 
 export interface MatchDeps {
   db: PrismaClient;
-  io?: Server;
+  io?: Realtime;
 }
 
 export interface MatchOutcome {

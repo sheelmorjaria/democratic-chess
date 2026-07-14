@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import type { Redis } from "ioredis";
-import type { Server } from "socket.io";
+import type { Realtime } from "../../realtime/realtime.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import type { MatchmakerDeps } from "../../matchmaking/matchmaker.js";
 import {
@@ -17,7 +17,7 @@ const joinSchema = z.object({
   subjectId: z.string().uuid().optional(),
 });
 
-export function createQueueRouter(db: PrismaClient, redis: Redis, io: Server): Router {
+export function createQueueRouter(db: PrismaClient, redis: Redis, io: Realtime): Router {
   const router = Router();
   const deps: MatchmakerDeps = { db, redis, io };
 
