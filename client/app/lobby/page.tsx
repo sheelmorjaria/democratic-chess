@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import {
@@ -14,9 +15,14 @@ import {
 } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import RosterManager from "@/components/RosterManager";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { Banner } from "@/components/ui/Banner";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function LobbyPage() {
-  const { user, ready, logout } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const [teamName, setTeamName] = useState("");
   const [whiteId, setWhiteId] = useState("");
@@ -64,7 +70,13 @@ export default function LobbyPage() {
     };
   }, [queue.state, router]);
 
-  if (!ready || !user) return <main style={{ padding: "2rem" }}>Loading…</main>;
+  if (!ready || !user) {
+    return (
+      <div className="dc-row">
+        <Spinner /> Loading…
+      </div>
+    );
+  }
 
   async function makeTeam(event: React.FormEvent) {
     event.preventDefault();
@@ -123,71 +135,126 @@ export default function LobbyPage() {
   }
 
   return (
-    <main style={{ padding: "2rem", maxWidth: 560, fontFamily: "system-ui, sans-serif" }}>
-      <h1>Lobby</h1>
-      <p>
-        Signed in as <strong>{user.username}</strong>.{" "}
-        <button onClick={logout}>Log out</button>{" "}
-        <button onClick={() => router.push("/leaderboard")}>Leaderboard</button>
-      </p>
-
-      <form onSubmit={makeTeam} style={{ display: "grid", gap: "0.5rem", marginBottom: "2rem" }}>
-        <h2>Create a team</h2>
-        <input placeholder="team name" value={teamName} onChange={(e) => setTeamName(e.target.value)} required />
-        <button type="submit">Create team (you become captain)</button>
-      </form>
-
-      <form onSubmit={makeMatch} style={{ display: "grid", gap: "0.5rem", marginBottom: "2rem" }}>
-        <h2>Start a match (direct challenge)</h2>
-        <input placeholder="white team id" value={whiteId} onChange={(e) => setWhiteId(e.target.value)} required />
-        <input placeholder="black team id" value={blackId} onChange={(e) => setBlackId(e.target.value)} required />
-        <button type="submit">Create match</button>
-      </form>
-
-      <div style={{ display: "grid", gap: "0.5rem", marginBottom: "2rem" }}>
-        <h2>Find a match (matchmaking queue)</h2>
-        {queue.state === "queued" ? (
-          <p style={{ color: "#666" }}>
-            Searching for an opponent… est. wait ~{queue.estimatedWaitSec ?? "—"}s.{" "}
-            <button onClick={leave}>Leave queue</button>
+    <>
+      <div className="dc-pagehead">
+        <div>
+          <h1 className="dc-pagehead__title">Lobby</h1>
+          <p className="dc-muted">
+            Signed in as <strong>{user.username}</strong>
           </p>
-        ) : (
-          <>
-            <button onClick={queueSolo}>Queue as solo player</button>
-            <form onSubmit={queueTeam} style={{ display: "grid", gap: "0.5rem" }}>
-              <input
-                placeholder="your team id"
-                value={queueTeamId}
-                onChange={(e) => setQueueTeamId(e.target.value)}
-                required
-              />
-              <button type="submit">Queue as team (captain)</button>
-            </form>
-          </>
-        )}
+        </div>
+        <Link href="/leaderboard" className="dc-btn dc-btn--secondary dc-btn--sm">
+          Leaderboard
+        </Link>
       </div>
 
-      <div style={{ display: "grid", gap: "0.5rem", marginBottom: "2rem" }}>
-        <h2>Manage roster</h2>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setActiveRosterId(rosterTeamId.trim() || null);
-          }}
-          style={{ display: "grid", gap: "0.5rem" }}
-        >
-          <input
-            placeholder="your team id"
-            value={rosterTeamId}
-            onChange={(e) => setRosterTeamId(e.target.value)}
-            required
-          />
-          <button type="submit">Load roster</button>
-        </form>
-        {activeRosterId && <RosterManager teamId={activeRosterId} />}
+      <div className="dc-grid-2">
+        <Card title="Create a team">
+          <form onSubmit={makeTeam} className="dc-stack">
+            <Field
+              label="Team name"
+              placeholder="My grandmasters"
+              value={teamName}
+              onChange={(e) => setTeamName(e.target.value)}
+              required
+            />
+            <Button type="submit" variant="primary">
+              Create team
+            </Button>
+            <p className="dc-muted" style={{ fontSize: 13 }}>
+              You become the captain.
+            </p>
+          </form>
+        </Card>
+
+        <Card title="Find a match">
+          {queue.state === "queued" ? (
+            <div className="dc-stack">
+              <Banner tone="info">
+                Searching for an opponent… est. wait ~{queue.estimatedWaitSec ?? "—"}s
+              </Banner>
+              <Button variant="secondary" onClick={leave}>
+                Leave queue
+              </Button>
+            </div>
+          ) : (
+            <div className="dc-stack">
+              <p className="dc-muted" style={{ fontSize: 13 }}>
+                Rating-banded matchmaking. Cross-type solo vs team pairing.
+              </p>
+              <Button variant="primary" onClick={queueSolo}>
+                Queue as solo player
+              </Button>
+              <form onSubmit={queueTeam} className="dc-stack">
+                <Field
+                  label="Your team id"
+                  placeholder="team_…"
+                  value={queueTeamId}
+                  onChange={(e) => setQueueTeamId(e.target.value)}
+                  required
+                />
+                <Button type="submit" variant="secondary">
+                  Queue as team (captain)
+                </Button>
+              </form>
+            </div>
+          )}
+        </Card>
+
+        <Card title="Direct challenge">
+          <form onSubmit={makeMatch} className="dc-stack">
+            <Field
+              label="White team id"
+              placeholder="team_…"
+              value={whiteId}
+              onChange={(e) => setWhiteId(e.target.value)}
+              required
+            />
+            <Field
+              label="Black team id"
+              placeholder="team_…"
+              value={blackId}
+              onChange={(e) => setBlackId(e.target.value)}
+              required
+            />
+            <Button type="submit" variant="primary">
+              Create match
+            </Button>
+          </form>
+        </Card>
+
+        <Card title="Manage roster">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setActiveRosterId(rosterTeamId.trim() || null);
+            }}
+            className="dc-stack"
+          >
+            <Field
+              label="Your team id"
+              placeholder="team_…"
+              value={rosterTeamId}
+              onChange={(e) => setRosterTeamId(e.target.value)}
+              required
+            />
+            <Button type="submit" variant="secondary">
+              Load roster
+            </Button>
+          </form>
+          {activeRosterId && (
+            <div style={{ marginTop: 16 }}>
+              <RosterManager teamId={activeRosterId} />
+            </div>
+          )}
+        </Card>
       </div>
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-    </main>
+      {error && (
+        <div style={{ marginTop: 16 }}>
+          <Banner tone="error">{error}</Banner>
+        </div>
+      )}
+    </>
   );
 }

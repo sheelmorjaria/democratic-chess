@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   getSocket,
@@ -12,6 +13,8 @@ import { getMatch } from "@/lib/api";
 import Board from "@/components/Board";
 import VotingSidebar, { type ProposalView } from "@/components/VotingSidebar";
 import TeamChat, { type ChatMessage } from "@/components/TeamChat";
+import { Banner } from "@/components/ui/Banner";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface MatchStart {
   matchId: string;
@@ -44,6 +47,21 @@ export default function MatchPage() {
   const [over, setOver] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [conn, setConn] = useState<ConnectionState>("connecting");
+  const [now, setNow] = useState(() => Date.now());
+
+  // Live countdown of the voting/turn window.
+  useEffect(() => {
+    if (!deadline) return;
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [deadline]);
+
+  const remaining =
+    deadline != null ? Math.max(0, Math.round((new Date(deadline).getTime() - now) / 1000)) : null;
+  const mmss =
+    remaining != null
+      ? `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`
+      : null;
 
   // Seed authoritative state + register for reconnect-resync, then wire socket events.
   useEffect(() => {
@@ -141,47 +159,67 @@ export default function MatchPage() {
 
   if (loading) {
     return (
-      <main style={{ padding: "1.5rem", fontFamily: "system-ui, sans-serif" }}>
-        <h1>Match {matchId.slice(0, 8)}…</h1>
-        <p>Loading match…</p>
-      </main>
+      <div className="dc-row">
+        <Spinner /> Loading match {matchId.slice(0, 8)}…
+      </div>
     );
   }
 
   // Terminal state: the match is over — show the result + final position, no ballot.
   if (over) {
     return (
-      <main style={{ padding: "1.5rem", fontFamily: "system-ui, sans-serif" }}>
-        <h1>Match {matchId.slice(0, 8)}…</h1>
-        <p style={{ color: "green", fontWeight: 600, fontSize: "1.1rem" }}>{over}</p>
-        <p>
-          <button onClick={() => router.push("/lobby")} style={{ marginRight: 8 }}>
+      <>
+        <h1 className="dc-pagehead__title" style={{ marginBottom: 12 }}>
+          Match {matchId.slice(0, 8)}…
+        </h1>
+        <div style={{ marginBottom: 16 }}>
+          <Banner tone="success">{over}</Banner>
+        </div>
+        <div className="dc-row" style={{ marginBottom: 16 }}>
+          <Link href="/lobby" className="dc-btn dc-btn--secondary">
             ← Back to lobby
-          </button>
-          <button onClick={() => router.push("/leaderboard")}>Leaderboard</button>
-        </p>
-        <div style={{ maxWidth: 480, marginTop: "1rem" }}>
+          </Link>
+          <Link href="/leaderboard" className="dc-btn dc-btn--ghost">
+            Leaderboard
+          </Link>
+        </div>
+        <div className="dc-boardwrap">
           <Board fen={fen} myTurn={false} orientation={color} onPropose={() => undefined} />
         </div>
-      </main>
+      </>
     );
   }
 
   return (
-    <main style={{ padding: "1.5rem", fontFamily: "system-ui, sans-serif" }}>
-      <h1>Match {matchId.slice(0, 8)}…</h1>
-      <p>
-        You are <strong>{color}</strong>.{" "}
-        {youAreSolo ? "Solo vs Team — " : ""}
-        {turnColor ? `${turnColor} to move` : ""}
-      </p>
-      {reconnecting && (
-        <p style={{ color: "darkorange" }}>Connection lost — reconnecting…</p>
+    <>
+      <div className="dc-status">
+        <div className="dc-row" style={{ flexWrap: "wrap" }}>
+          <h1 className="dc-pagehead__title">Match {matchId.slice(0, 8)}…</h1>
+          <span className="dc-turn-pill">
+            <span className="dc-turn-pill__dot" />
+            {turnColor ? `${turnColor} to move` : "waiting"}
+          </span>
+          <span className="dc-muted" style={{ fontSize: 14 }}>
+            You are <strong>{color}</strong>
+            {youAreSolo ? " · solo vs team" : ""}
+          </span>
+        </div>
+        {mmss && (
+          <span className={`dc-timer${remaining != null && remaining < 10 ? " dc-timer--low" : ""}`}>
+            ⏱ {mmss}
+          </span>
+        )}
+      </div>
+
+      {reconnecting && <Banner tone="warning">Connection lost — reconnecting…</Banner>}
+      {error && (
+        <div style={{ margin: "12px 0" }}>
+          <Banner tone="error">{error}</Banner>
+        </div>
       )}
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      {over && <p style={{ color: "green" }}>{over}</p>}
-      <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "flex-start" }}>
-        <div style={{ maxWidth: 480 }}>
+
+      <div className="dc-match-layout">
+        <div className="dc-boardwrap">
           <Board
             fen={fen}
             myTurn={myTurn}
@@ -191,6 +229,7 @@ export default function MatchPage() {
             }
           />
         </div>
+
         {/* Solo player: no ballot/chat — they see only executed moves (AC2). */}
         {!youAreSolo && (
           <>
@@ -213,6 +252,6 @@ export default function MatchPage() {
           </>
         )}
       </div>
-    </main>
+    </>
   );
 }

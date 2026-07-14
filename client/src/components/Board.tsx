@@ -7,7 +7,25 @@ import dynamic from "next/dynamic";
 // (ssr:false) — otherwise Next's SSR renders an empty board.
 const BoardCanvas = dynamic(() => import("./BoardCanvas"), {
   ssr: false,
-  loading: () => <div style={{ height: 480, maxWidth: 480, background: "#eee" }}>Loading board…</div>,
+  loading: () => (
+    <div
+      className="dc-board"
+      style={{
+        height: 480,
+        maxWidth: 480,
+        width: "100%",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--text-muted)",
+      }}
+    >
+      Loading board…
+    </div>
+  ),
 });
 
 export interface BoardProps {

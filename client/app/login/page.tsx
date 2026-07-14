@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { Banner } from "@/components/ui/Banner";
 
 export default function LoginPage() {
   const { login, register } = useAuth();
@@ -12,40 +16,78 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setBusy(true);
     try {
       if (mode === "register") await register(username, email, password);
       else await login(email, password);
       router.push("/lobby");
     } catch (e) {
       setError(e instanceof Error ? e.message : "auth failed");
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <main style={{ padding: "2rem", maxWidth: 360, fontFamily: "system-ui, sans-serif" }}>
-      <h1>{mode === "login" ? "Log in" : "Register"}</h1>
-      <form onSubmit={submit} style={{ display: "grid", gap: "0.5rem" }}>
-        {mode === "register" && (
-          <input placeholder="username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-        )}
-        <input type="email" placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input type="password" placeholder="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <button type="submit">{mode === "login" ? "Log in" : "Create account"}</button>
-      </form>
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      <p>
-        <button
-          type="button"
-          onClick={() => setMode(mode === "login" ? "register" : "login")}
-          style={{ background: "none", border: "none", color: "blue", cursor: "pointer" }}
-        >
-          {mode === "login" ? "Need an account? Register" : "Have an account? Log in"}
-        </button>
-      </p>
-    </main>
+    <div style={{ maxWidth: 400, margin: "40px auto 0" }}>
+      <Card>
+        <div className="dc-segmented" style={{ marginBottom: 20 }}>
+          <button
+            type="button"
+            className={`dc-segmented__btn ${mode === "login" ? "dc-segmented__btn--active" : ""}`}
+            onClick={() => setMode("login")}
+          >
+            Log in
+          </button>
+          <button
+            type="button"
+            className={`dc-segmented__btn ${mode === "register" ? "dc-segmented__btn--active" : ""}`}
+            onClick={() => setMode("register")}
+          >
+            Register
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="dc-stack">
+          {mode === "register" && (
+            <Field
+              id="username"
+              label="Username"
+              placeholder="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          )}
+          <Field
+            id="email"
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Field
+            id="password"
+            label="Password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          {error && <Banner tone="error">{error}</Banner>}
+          <Button type="submit" variant="primary" block disabled={busy}>
+            {mode === "login" ? "Log in" : "Create account"}
+          </Button>
+        </form>
+      </Card>
+    </div>
   );
 }

@@ -1,30 +1,47 @@
 import Link from "next/link";
 
+const FEATURES = [
+  {
+    title: "Team vs Team",
+    body: "Propose, vote, and auto-execute under a turn timer. Captains break ties.",
+  },
+  {
+    title: "Solo vs Team",
+    body: "Queue up and play your own moves directly against a voting team.",
+  },
+  {
+    title: "Rating & Leaderboard",
+    body: "Rating-banded matchmaking with a public ELO leaderboard.",
+  },
+];
+
 export default function Home() {
   return (
-    <main
-      style={{
-        padding: "2rem",
-        fontFamily: "system-ui, sans-serif",
-        maxWidth: 720,
-      }}
-    >
-      <h1>🤝 DemocraticChess</h1>
-      <p>Real-time, synchronous team chess. Teams vote on every move — or go solo against the hive mind.</p>
+    <>
+      <section className="dc-hero">
+        <h1 className="dc-hero__title">Play chess, together.</h1>
+        <p className="dc-hero__sub">
+          Real-time, synchronous team chess. Teams vote on every move — or go solo against the hive
+          mind.
+        </p>
+        <div className="dc-row">
+          <Link href="/login" className="dc-btn dc-btn--primary">
+            ▶ Play
+          </Link>
+          <Link href="/leaderboard" className="dc-btn dc-btn--secondary">
+            Leaderboard
+          </Link>
+        </div>
+      </section>
 
-      <p>
-        <Link href="/login" style={{ marginRight: 12 }}>
-          ▶ Play
-        </Link>
-        <Link href="/leaderboard">Leaderboard</Link>
-      </p>
-
-      <ul style={{ color: "#444", lineHeight: 1.6, marginTop: "1.5rem" }}>
-        <li>Team vs Team: propose, vote, and auto-execute under a turn timer — captain breaks ties.</li>
-        <li>Solo vs Team: queue up and play your own moves directly against a voting team.</li>
-        <li>Rating-banded matchmaking with a public ELO leaderboard.</li>
-        <li>Works on web and mobile; reconnects and resyncs to the authoritative board.</li>
-      </ul>
-    </main>
+      <div className="dc-feature-grid">
+        {FEATURES.map((f) => (
+          <article key={f.title} className="dc-card">
+            <h3 className="dc-feature__title">{f.title}</h3>
+            <p className="dc-feature__body">{f.body}</p>
+          </article>
+        ))}
+      </div>
+    </>
   );
 }

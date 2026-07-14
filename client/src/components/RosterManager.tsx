@@ -8,6 +8,12 @@ import {
   removeTeamMember,
   type TeamDetail,
 } from "@/lib/api";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { Banner } from "@/components/ui/Banner";
+import { Badge } from "@/components/ui/Badge";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface RosterManagerProps {
   teamId: string;
@@ -22,7 +28,9 @@ export default function RosterManager({ teamId }: RosterManagerProps) {
   const [loading, setLoading] = useState(true);
 
   const me =
-    typeof window !== "undefined" ? (JSON.parse(localStorage.getItem("user") || "null") as { id: string } | null) : null;
+    typeof window !== "undefined"
+      ? (JSON.parse(localStorage.getItem("user") || "null") as { id: string } | null)
+      : null;
   const isCaptain = !!team && !!me && team.captainId === me.id;
 
   const load = useCallback(async () => {
@@ -70,19 +78,38 @@ export default function RosterManager({ teamId }: RosterManagerProps) {
     }
   }
 
-  if (loading) return <p>Loading roster…</p>;
-  if (!team) return <p style={{ color: "crimson" }}>{error ?? "team not found"}</p>;
+  if (loading) {
+    return (
+      <div className="dc-row">
+        <Spinner /> Loading roster…
+      </div>
+    );
+  }
+  if (!team) return <Banner tone="error">{error ?? "team not found"}</Banner>;
 
   return (
-    <section style={{ border: "1px solid #ccc", padding: "0.75rem" }}>
-      <h3>{team.name} — roster</h3>
-      <ul style={{ listStyle: "none", padding: 0 }}>
+    <Card>
+      <div className="dc-pagehead" style={{ marginBottom: 12 }}>
+        <h2 className="dc-card__title" style={{ margin: 0 }}>
+          {team.name}
+        </h2>
+        <Badge tone="accent">{team.members.length} members</Badge>
+      </div>
+
+      <ul className="dc-roster__list">
         {team.members.map((m) => (
-          <li key={m.userId} style={{ marginBottom: 4 }}>
-            {m.user.username} {m.role === "CAPTAIN" && <strong>(captain)</strong>}
+          <li key={m.userId} className="dc-roster__row">
+            <span className="dc-row">
+              {m.user.username}
+              {m.role === "CAPTAIN" && <Badge tone="accent">captain</Badge>}
+            </span>
             {isCaptain && m.role !== "CAPTAIN" && (
-              <button type="button" onClick={() => remove(m.userId, m.user.username)} style={{ marginLeft: 8 }}>
-                remove
+              <button
+                type="button"
+                className="dc-btn dc-btn--ghost dc-btn--sm"
+                onClick={() => remove(m.userId, m.user.username)}
+              >
+                Remove
               </button>
             )}
           </li>
@@ -90,21 +117,34 @@ export default function RosterManager({ teamId }: RosterManagerProps) {
       </ul>
 
       {isCaptain ? (
-        <form onSubmit={add} style={{ display: "grid", gap: "0.4rem", marginTop: "0.5rem" }}>
-          <input
-            placeholder="username to invite"
+        <form onSubmit={add} className="dc-stack" style={{ marginTop: 12 }}>
+          <Field
+            label="Invite by username"
+            placeholder="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
           />
-          <button type="submit">Add member</button>
+          <Button type="submit" variant="primary">
+            Add member
+          </Button>
         </form>
       ) : (
-        <p style={{ color: "#999" }}>Only the captain can manage the roster.</p>
+        <p className="dc-muted" style={{ fontSize: 13, marginTop: 8 }}>
+          Only the captain can manage the roster.
+        </p>
       )}
 
-      {msg && <p style={{ color: "green" }}>{msg}</p>}
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-    </section>
+      {msg && (
+        <div style={{ marginTop: 12 }}>
+          <Banner tone="success">{msg}</Banner>
+        </div>
+      )}
+      {error && (
+        <div style={{ marginTop: 12 }}>
+          <Banner tone="error">{error}</Banner>
+        </div>
+      )}
+    </Card>
   );
 }

@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { getLeaderboard, type LeaderboardEntry } from "@/lib/api";
+import { Banner } from "@/components/ui/Banner";
+import { Spinner } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type Board = "TEAM" | "SOLO";
 
@@ -39,62 +43,75 @@ export default function LeaderboardPage() {
     };
   }, [board, user]);
 
-  if (!ready || !user) return <main style={{ padding: "2rem" }}>Loading…</main>;
+  if (!ready || !user) {
+    return (
+      <div className="dc-row">
+        <Spinner /> Loading…
+      </div>
+    );
+  }
 
   return (
-    <main style={{ padding: "2rem", maxWidth: 720, fontFamily: "system-ui, sans-serif" }}>
-      <h1>Leaderboard</h1>
-      <p>
-        <button onClick={() => router.push("/lobby")}>← Lobby</button>
-      </p>
-      <div style={{ marginBottom: "1rem" }}>
-        {(["TEAM", "SOLO"] as const).map((b) => (
-          <button
-            key={b}
-            onClick={() => setBoard(b)}
-            style={{ fontWeight: board === b ? "bold" : "normal", marginRight: 8 }}
-          >
-            {b === "TEAM" ? "Teams" : "Solo"}
-          </button>
-        ))}
+    <>
+      <div className="dc-pagehead">
+        <h1 className="dc-pagehead__title">Leaderboard</h1>
+        <Link href="/lobby" className="dc-btn dc-btn--ghost dc-btn--sm">
+          ← Lobby
+        </Link>
       </div>
-      {loading && <p>Loading rankings…</p>}
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+
+      <div className="dc-segmented" style={{ marginBottom: 20 }}>
+        <button
+          type="button"
+          className={`dc-segmented__btn ${board === "TEAM" ? "dc-segmented__btn--active" : ""}`}
+          onClick={() => setBoard("TEAM")}
+        >
+          Teams
+        </button>
+        <button
+          type="button"
+          className={`dc-segmented__btn ${board === "SOLO" ? "dc-segmented__btn--active" : ""}`}
+          onClick={() => setBoard("SOLO")}
+        >
+          Solo
+        </button>
+      </div>
+
+      {loading && (
+        <div className="dc-row">
+          <Spinner /> Loading rankings…
+        </div>
+      )}
+      {error && <Banner tone="error">{error}</Banner>}
       {!loading && !error && entries.length === 0 && (
-        <p style={{ color: "#999" }}>No ranked {board === "TEAM" ? "teams" : "players"} yet.</p>
+        <EmptyState>No ranked {board === "TEAM" ? "teams" : "players"} yet.</EmptyState>
       )}
       {!loading && entries.length > 0 && (
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
+        <table className="dc-table">
           <thead>
             <tr>
-              <th style={cell}>#</th>
-              <th style={cell}>Name</th>
-              <th style={cell}>Rating</th>
-              <th style={cell}>W</th>
-              <th style={cell}>L</th>
-              <th style={cell}>D</th>
+              <th>#</th>
+              <th>Name</th>
+              <th className="num">Rating</th>
+              <th className="num">W</th>
+              <th className="num">L</th>
+              <th className="num">D</th>
             </tr>
           </thead>
           <tbody>
             {entries.map((e, i) => (
               <tr key={e.subjectId}>
-                <td style={cell}>{i + 1}</td>
-                <td style={cell}>{e.name}</td>
-                <td style={cell}>{e.rating}</td>
-                <td style={cell}>{e.wins}</td>
-                <td style={cell}>{e.losses}</td>
-                <td style={cell}>{e.draws}</td>
+                <td>{i + 1}</td>
+                <td>{e.name}</td>
+                <td className="num">{e.rating}</td>
+                <td className="num">{e.wins}</td>
+                <td className="num">{e.losses}</td>
+                <td className="num">{e.draws}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
-    </main>
+    </>
   );
 }
-
-const cell: React.CSSProperties = {
-  border: "1px solid #ddd",
-  padding: "0.4rem 0.6rem",
-  textAlign: "left",
-};
