@@ -36,6 +36,7 @@ export default function MatchPage() {
   const [deadline, setDeadline] = useState<string | null>(null);
   const [proposals, setProposals] = useState<ProposalView[]>([]);
   const [tallies, setTallies] = useState<Record<string, number>>({});
+  const [myVote, setMyVote] = useState<string | null>(null);
   const [chats, setChats] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
@@ -89,6 +90,7 @@ export default function MatchPage() {
     const onTurnStart = (data: { color: "white" | "black"; deadlineAt: string }) => {
       setTurnColor(data.color);
       setDeadline(data.deadlineAt);
+      setMyVote(null); // fresh ballot each turn
     };
     const onProposal = (p: ProposalView) => setProposals((prev) => [...prev, p]);
     const onVoteUpdate = (data: { tallies: { moveKey: string; count: number }[] }) => {
@@ -100,6 +102,7 @@ export default function MatchPage() {
       setFen(data.fen);
       setProposals([]);
       setTallies({});
+      setMyVote(null);
     };
     const onChat = (m: ChatMessage) => setChats((prev) => [...prev, m]);
     const onMatchEnd = (data: { winner: string; reason: string }) =>
@@ -194,7 +197,11 @@ export default function MatchPage() {
               myTurn={myTurn}
               turnColor={turnColor}
               deadline={deadline}
-              onVote={(moveKey) => getSocket()?.emit("vote_move", { matchId, moveKey })}
+              myVote={myVote}
+              onVote={(moveKey) => {
+                setMyVote(moveKey);
+                getSocket()?.emit("vote_move", { matchId, moveKey });
+              }}
             />
             <TeamChat
               messages={chats}

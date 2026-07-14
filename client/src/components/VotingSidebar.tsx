@@ -14,6 +14,8 @@ interface VotingSidebarProps {
   myTurn: boolean;
   turnColor: string | null;
   deadline: string | null;
+  /** The move key this member currently voted for (null = not voted). */
+  myVote?: string | null;
   onVote: (moveKey: string) => void;
 }
 
@@ -23,31 +25,46 @@ export default function VotingSidebar({
   myTurn,
   turnColor,
   deadline,
+  myVote,
   onVote,
 }: VotingSidebarProps) {
   return (
     <section style={{ border: "1px solid #ccc", padding: "0.75rem", minWidth: 240 }}>
       <h3>Ballot {turnColor ? `(${turnColor} to move)` : ""}</h3>
       {deadline && <p style={{ color: "#666" }}>window ends {new Date(deadline).toLocaleTimeString()}</p>}
+      {myTurn && proposals.length > 0 && (
+        <p style={{ color: "#666" }}>
+          {myVote ? "Click a different move to change your vote." : "Click a move to vote."} Votes are
+          changeable until the window closes.
+        </p>
+      )}
       {!myTurn && <p style={{ color: "#999" }}>Waiting for your team&apos;s turn…</p>}
       {myTurn && proposals.length === 0 && (
         <p style={{ color: "#999" }}>No proposals yet — drag a piece to propose a move.</p>
       )}
       {proposals.length === 0 && !myTurn && <p style={{ color: "#999" }}>No proposals yet.</p>}
       <ul style={{ listStyle: "none", padding: 0 }}>
-        {proposals.map((p) => (
-          <li key={p.moveKey} style={{ marginBottom: 6 }}>
-            <button
-              type="button"
-              disabled={!myTurn}
-              onClick={() => onVote(p.moveKey)}
-              style={{ marginRight: 8 }}
-            >
-              {p.san} ({p.proposerUsername})
-            </button>
-            <span>{tallies[p.moveKey] ?? 0} votes</span>
-          </li>
-        ))}
+        {proposals.map((p) => {
+          const voted = myVote === p.moveKey;
+          return (
+            <li key={p.moveKey} style={{ marginBottom: 6 }}>
+              <button
+                type="button"
+                disabled={!myTurn}
+                onClick={() => onVote(p.moveKey)}
+                style={{
+                  marginRight: 8,
+                  fontWeight: voted ? "bold" : "normal",
+                  borderColor: voted ? "green" : undefined,
+                }}
+              >
+                {voted ? "✓ " : ""}
+                {p.san} ({p.proposerUsername})
+              </button>
+              <span>{tallies[p.moveKey] ?? 0} votes</span>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
